@@ -12,7 +12,7 @@ use tch::{
     nn,
     nn::OptimizerConfig,
     Device,
-    Kind::Float,
+    Kind::Double,
     Tensor,
 };
 
@@ -302,7 +302,7 @@ impl Agent {
         let q = self.critic.forward(&states, &actions);
 
         let diff = q_target - q;
-        let critic_loss = (&diff * &diff).mean(Float);
+        let critic_loss = (&diff * &diff).mean(Double);
 
         self.critic.opt.zero_grad();
         critic_loss.backward();
@@ -311,7 +311,7 @@ impl Agent {
         let actor_loss = -self
             .critic
             .forward(&states, &self.actor.forward(&states))
-            .mean(Float);
+            .mean(Double);
 
         self.actor.opt.zero_grad();
         actor_loss.backward();

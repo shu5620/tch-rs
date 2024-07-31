@@ -371,7 +371,7 @@ fn copy_overflow() {
 
 #[test]
 fn mkldnn() {
-    let t = Tensor::randn(&[5, 5, 5], (tch::Kind::Float, Device::Cpu));
+    let t = Tensor::randn(&[5, 5, 5], (tch::Kind::Double, Device::Cpu));
     assert!(!t.is_mkldnn());
     assert!(t.to_mkldnn().is_mkldnn());
 }
@@ -474,7 +474,7 @@ fn quantized() {
 
 #[test]
 fn nll_loss() {
-    let input = Tensor::randn(&[3, 5], (tch::Kind::Float, Device::Cpu)).set_requires_grad(true);
+    let input = Tensor::randn(&[3, 5], (tch::Kind::Double, Device::Cpu)).set_requires_grad(true);
     let target = Tensor::of_slice(&[1i64, 0, 4]);
     let output = input.nll_loss(&target);
     output.backward();

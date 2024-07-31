@@ -3,8 +3,8 @@ use tch::{IValue, Kind, Tensor};
 
 #[test]
 fn jit() {
-    let x = Tensor::of_slice(&[3, 1, 4, 1, 5]).to_kind(Kind::Float);
-    let y = Tensor::of_slice(&[7]).to_kind(Kind::Float);
+    let x = Tensor::of_slice(&[3, 1, 4, 1, 5]).to_kind(Kind::Double);
+    let y = Tensor::of_slice(&[7]).to_kind(Kind::Double);
     // The JIT module is created in create_jit_models.py
     let foo = tch::CModule::load("tests/foo.pt").unwrap();
     let result = foo.forward_ts(&[&x, &y]).unwrap();
@@ -14,8 +14,8 @@ fn jit() {
 
 #[test]
 fn jit_data() {
-    let x = Tensor::of_slice(&[3, 1, 4, 1, 5]).to_kind(Kind::Float);
-    let y = Tensor::of_slice(&[7]).to_kind(Kind::Float);
+    let x = Tensor::of_slice(&[3, 1, 4, 1, 5]).to_kind(Kind::Double);
+    let y = Tensor::of_slice(&[7]).to_kind(Kind::Double);
     let mut file = std::fs::File::open("tests/foo.pt").unwrap();
     let foo = tch::CModule::load_data(&mut file).unwrap();
     let result = foo.forward_ts(&[&x, &y]).unwrap();

@@ -55,7 +55,7 @@ fn text() {
         let err = i64::from(
             (first_column_plus_one - second_column)
                 .pow(2)
-                .sum(tch::Kind::Float),
+                .sum(tch::Kind::Double),
         );
         assert_eq!(err, 0)
     }

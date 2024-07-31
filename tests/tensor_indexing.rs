@@ -3,7 +3,7 @@ use tch::{IndexOp, NewAxis};
 
 #[test]
 fn integer_index() {
-    let opt = (Kind::Float, Device::Cpu);
+    let opt = (Kind::Double, Device::Cpu);
 
     let tensor = Tensor::arange_start(0, 2 * 3, opt).view([2, 3]);
     let result = tensor.i(1);
@@ -22,7 +22,7 @@ fn integer_index() {
 
 #[test]
 fn range_index() {
-    let opt = (Kind::Float, Device::Cpu);
+    let opt = (Kind::Double, Device::Cpu);
 
     // Range
     let tensor = Tensor::arange_start(0, 4 * 3, opt).view([4, 3]);
@@ -69,7 +69,7 @@ fn range_index() {
 
 #[test]
 fn slice_index() {
-    let opt = (Kind::Float, Device::Cpu);
+    let opt = (Kind::Double, Device::Cpu);
 
     let tensor = Tensor::arange_start(0, 6 * 2, opt).view([6, 2]);
     let index: &[_] = &[1, 3, 5];
@@ -86,7 +86,7 @@ fn slice_index() {
 
 #[test]
 fn new_index() {
-    let opt = (Kind::Float, Device::Cpu);
+    let opt = (Kind::Double, Device::Cpu);
 
     let tensor = Tensor::arange_start(0, 2 * 3, opt).view([2, 3]);
     let result = tensor.i((NewAxis,));
@@ -107,7 +107,7 @@ fn new_index() {
 #[cfg(target_os = "linux")]
 #[test]
 fn complex_index() {
-    let opt = (Kind::Float, Device::Cpu);
+    let opt = (Kind::Double, Device::Cpu);
 
     let tensor = Tensor::arange_start(0, 2 * 3 * 5 * 7, opt).view([2, 3, 5, 7]);
     let result = tensor.i((1, 1..2, vec![2, 3, 0].as_slice(), NewAxis, 3..));

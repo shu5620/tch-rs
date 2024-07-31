@@ -15,7 +15,7 @@ lazy_static! {
 pub fn normalize(tensor: &Tensor) -> Result<Tensor, TchError> {
     let mean = IMAGENET_MEAN.lock().unwrap();
     let std = IMAGENET_STD.lock().unwrap();
-    (tensor.to_kind(Kind::Float) / 255.0)
+    (tensor.to_kind(Kind::Double) / 255.0)
         .f_sub(&mean)?
         .f_div(&std)
 }

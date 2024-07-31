@@ -96,7 +96,7 @@ pub fn report(pred: &Tensor, img: &Tensor, w: i64, h: i64) -> Result<Tensor> {
     }
     // Annotate the original image and print boxes information.
     let (_, initial_h, initial_w) = img.size3()?;
-    let mut img = img.to_kind(tch::Kind::Float) / 255.;
+    let mut img = img.to_kind(tch::Kind::Double) / 255.;
     let w_ratio = initial_w as f64 / w as f64;
     let h_ratio = initial_h as f64 / h as f64;
     for (class_index, bboxes_for_class) in bboxes.iter().enumerate() {
@@ -131,7 +131,7 @@ pub fn main() -> Result<()> {
         let net_width = darknet.width()?;
         let net_height = darknet.height()?;
         let image = image::resize(&original_image, net_width, net_height)?;
-        let image = image.unsqueeze(0).to_kind(tch::Kind::Float) / 255.;
+        let image = image.unsqueeze(0).to_kind(tch::Kind::Double) / 255.;
         let predictions = model.forward_t(&image, false).squeeze();
         let image = report(&predictions, &original_image, net_width, net_height)?;
         image::save(&image, format!("output-{:05}.jpg", index))?;

@@ -1,5 +1,5 @@
 //! A linear fully-connected layer.
-use crate::wrappers::kind::Kind::Float;
+use crate::wrappers::kind::Kind::Double;
 use crate::Tensor;
 use std::borrow::Borrow;
 
@@ -46,7 +46,7 @@ pub fn linear<'a, T: Borrow<super::Path<'a>>>(
         });
         vs.var("bias", &[out_dim], bs_init)
     } else {
-        Tensor::zeros(&[out_dim], (Float, vs.device()))
+        Tensor::zeros(&[out_dim], (Double, vs.device()))
     };
 
     Linear {

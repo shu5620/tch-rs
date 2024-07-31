@@ -200,7 +200,7 @@ impl Tensor {
 impl Tensor {
     /// Computes the cross-entropy loss based on some logits and targets.
     pub fn cross_entropy_for_logits(&self, targets: &Tensor) -> Tensor {
-        self.log_softmax(-1, Kind::Float).nll_loss(&targets)
+        self.log_softmax(-1, Kind::Double).nll_loss(&targets)
     }
 
     /// Returns the average accuracy for some given logits assuming that
@@ -208,8 +208,8 @@ impl Tensor {
     pub fn accuracy_for_logits(&self, targets: &Tensor) -> Tensor {
         self.argmax(-1, false)
             .eq_tensor(&targets)
-            .to_kind(Kind::Float)
-            .mean(Kind::Float)
+            .to_kind(Kind::Double)
+            .mean(Kind::Double)
     }
 
     pub fn random_batch(&self, batch_size: i64) -> Tensor {

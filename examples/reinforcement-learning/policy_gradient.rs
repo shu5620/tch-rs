@@ -7,7 +7,7 @@
 // https://github.com/openai/spinningup/blob/master/spinup/examples/pg_math/2_rtg_pg.py
 
 use super::gym_env::{GymEnv, Step};
-use tch::{nn, nn::OptimizerConfig, Kind::Float, Tensor};
+use tch::{nn, nn::OptimizerConfig, Kind::Double, Tensor};
 
 fn model(p: &nn::Path, input_shape: &[i64], nact: i64) -> impl nn::Module {
     let nin = input_shape.iter().fold(1, |acc, x| acc * x);
@@ -48,7 +48,7 @@ pub fn run() -> cpython::PyResult<()> {
             let action = tch::no_grad(|| {
                 obs.unsqueeze(0)
                     .apply(&model)
-                    .softmax(1, Float)
+                    .softmax(1, Double)
                     .multinomial(1, true)
             });
             let action = i64::from(action);
@@ -73,14 +73,14 @@ pub fn run() -> cpython::PyResult<()> {
         let actions: Vec<i64> = steps.iter().map(|s| s.action).collect();
         let actions = Tensor::of_slice(&actions).unsqueeze(1);
         let rewards = accumulate_rewards(&steps);
-        let rewards = Tensor::of_slice(&rewards).to_kind(Float);
+        let rewards = Tensor::of_slice(&rewards).to_kind(Double);
         let action_mask =
             Tensor::zeros(&[batch_size, 2], tch::kind::FLOAT_CPU).scatter_value(1, &actions, 1.0);
         let obs: Vec<Tensor> = steps.into_iter().map(|s| s.obs).collect();
         let logits = Tensor::stack(&obs, 0).apply(&model);
         let log_probs =
-            (action_mask * logits.log_softmax(1, Float)).sum_dim_intlist(&[1], false, Float);
-        let loss = -(rewards * log_probs).mean(Float);
+            (action_mask * logits.log_softmax(1, Double)).sum_dim_intlist(&[1], false, Double);
+        let loss = -(rewards * log_probs).mean(Double);
         opt.backward_step(&loss)
     }
     Ok(())

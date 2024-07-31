@@ -328,7 +328,7 @@ impl<'a> Path<'a> {
     /// gradients will not be tracked.
     /// The variable uses a float tensor initialized with zeros.
     pub fn f_zeros_no_train(&self, name: &str, dims: &[i64]) -> Result<Tensor, TchError> {
-        let z = Tensor::f_zeros(dims, (Kind::Float, self.device()))?;
+        let z = Tensor::f_zeros(dims, (Kind::Double, self.device()))?;
         Ok(self.add(name, z, false))
     }
 
@@ -339,7 +339,7 @@ impl<'a> Path<'a> {
     /// gradients will not be tracked.
     /// The variable uses a float tensor initialized with ones.
     pub fn f_ones_no_train(&self, name: &str, dims: &[i64]) -> Result<Tensor, TchError> {
-        let o = Tensor::f_ones(dims, (Kind::Float, self.device()))?;
+        let o = Tensor::f_ones(dims, (Kind::Double, self.device()))?;
         Ok(self.add(name, o, false))
     }
 
@@ -607,7 +607,7 @@ impl<'a> Entry<'a> {
 
     /// Returns the existing entry if, otherwise create a new variable.
     pub fn or_ones_no_train(self, dims: &[i64]) -> Tensor {
-        let o = Tensor::ones(dims, (Kind::Float, self.path.device()));
+        let o = Tensor::ones(dims, (Kind::Double, self.path.device()));
         self.path
             .get_or_add_with_lock(self.name, o, true, self.variables)
     }
@@ -638,7 +638,7 @@ impl<'a> Entry<'a> {
 
     /// Returns the existing entry if, otherwise create a new variable.
     pub fn or_zeros_no_train(self, dims: &[i64]) -> Tensor {
-        let z = Tensor::zeros(dims, (Kind::Float, self.path.device()));
+        let z = Tensor::zeros(dims, (Kind::Double, self.path.device()));
         self.path
             .get_or_add_with_lock(self.name, z, true, self.variables)
     }

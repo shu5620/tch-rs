@@ -57,7 +57,7 @@ impl VecGymEnv {
         let obs_vec: Vec<u8> = obs_buffer.to_vec(py)?;
         let obs = Tensor::of_slice(&obs_vec)
             .view_(&self.observation_space)
-            .to_kind(tch::Kind::Float);
+            .to_kind(tch::Kind::Double);
         let reward = Tensor::of_slice(&step.get_item(py, 1)?.extract::<Vec<f32>>(py)?);
         let is_done = Tensor::of_slice(&step.get_item(py, 2)?.extract::<Vec<f32>>(py)?);
         Ok(Step {

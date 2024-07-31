@@ -28,10 +28,10 @@ fn read_file_(filename: &std::path::Path) -> Result<(Tensor, Tensor)> {
             &content
                 .narrow(0, 1 + content_offset, BYTES_PER_IMAGE - 1)
                 .view((C, H, W))
-                .to_kind(Kind::Float),
+                .to_kind(Kind::Double),
         );
     }
-    Ok((images.to_kind(Kind::Float) / 255.0, labels))
+    Ok((images.to_kind(Kind::Double) / 255.0, labels))
 }
 
 fn read_file(filename: &std::path::Path) -> Result<(Tensor, Tensor)> {

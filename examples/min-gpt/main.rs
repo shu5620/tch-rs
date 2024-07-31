@@ -70,7 +70,7 @@ fn causal_self_attention(p: &nn::Path, cfg: Config) -> impl ModuleT {
     let value = linear(p / "value", cfg.n_embd, cfg.n_embd);
     let proj = linear(p / "proj", cfg.n_embd, cfg.n_embd);
     let mask_init =
-        Tensor::ones(&[cfg.block_size, cfg.block_size], (Kind::Float, p.device())).tril(0);
+        Tensor::ones(&[cfg.block_size, cfg.block_size], (Kind::Double, p.device())).tril(0);
     let mask_init = mask_init.view([1, 1, cfg.block_size, cfg.block_size]);
     // let mask = p.var_copy("mask", &mask_init);
     let mask = mask_init;
@@ -85,7 +85,7 @@ fn causal_self_attention(p: &nn::Path, cfg: Config) -> impl ModuleT {
             &mask.i((.., .., ..sz_t, ..sz_t)).eq(0.),
             std::f64::NEG_INFINITY,
         );
-        let att = att.softmax(-1, Kind::Float).dropout(cfg.attn_pdrop, train);
+        let att = att.softmax(-1, Kind::Double).dropout(cfg.attn_pdrop, train);
         let ys = att
             .matmul(&v)
             .transpose(1, 2)
@@ -146,7 +146,7 @@ fn sample(data: &TextData, gpt: &impl ModuleT, input: Tensor) -> String {
     let mut result = String::new();
     for _index in 0..SAMPLING_LEN {
         let logits = input.apply_t(gpt, false).i((0, -1, ..));
-        let sampled_y = logits.softmax(-1, Kind::Float).multinomial(1, true);
+        let sampled_y = logits.softmax(-1, Kind::Double).multinomial(1, true);
         let last_label = i64::from(&sampled_y);
         result.push(data.label_to_char(last_label));
         input = Tensor::cat(&[input, sampled_y.view([1, 1])], 1).narrow(1, 1, BLOCK_SIZE);

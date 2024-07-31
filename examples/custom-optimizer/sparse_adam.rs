@@ -12,8 +12,8 @@ struct Buffer {
 impl Buffer {
     pub fn new(size: &[i64]) -> Buffer {
         Buffer {
-            first_moment: Tensor::zeros(size, (Kind::Float, Device::Cpu)),
-            second_moment: Tensor::zeros(size, (Kind::Float, Device::Cpu)),
+            first_moment: Tensor::zeros(size, (Kind::Double, Device::Cpu)),
+            second_moment: Tensor::zeros(size, (Kind::Double, Device::Cpu)),
             idx: 1,
         }
     }

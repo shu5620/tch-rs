@@ -42,15 +42,15 @@ fn save_and_load_var_store() {
         u1 += 42.0;
         v1 *= 2.0;
     });
-    assert_eq!(f64::from(&u1.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&v1.mean(Kind::Float)), 2.0);
-    assert_eq!(f64::from(&u2.mean(Kind::Float)), 0.0);
-    assert_eq!(f64::from(&v2.mean(Kind::Float)), 1.0);
+    assert_eq!(f64::from(&u1.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&v1.mean(Kind::Double)), 2.0);
+    assert_eq!(f64::from(&u2.mean(Kind::Double)), 0.0);
+    assert_eq!(f64::from(&v2.mean(Kind::Double)), 1.0);
     vs1.save(&filename).unwrap();
     vs2.load(&filename).unwrap();
-    assert_eq!(f64::from(&u1.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&u2.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&v2.mean(Kind::Float)), 2.0);
+    assert_eq!(f64::from(&u1.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&u2.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&v2.mean(Kind::Double)), 2.0);
     fs::remove_file(filename).unwrap();
 }
 
@@ -75,15 +75,15 @@ fn save_and_load_partial_var_store() {
         u1 += 42.0;
         v1 *= 2.0;
     });
-    assert_eq!(f64::from(&u1.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&v1.mean(Kind::Float)), 2.0);
-    assert_eq!(f64::from(&u2.mean(Kind::Float)), 0.0);
-    assert_eq!(f64::from(&v2.mean(Kind::Float)), 1.0);
+    assert_eq!(f64::from(&u1.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&v1.mean(Kind::Double)), 2.0);
+    assert_eq!(f64::from(&u2.mean(Kind::Double)), 0.0);
+    assert_eq!(f64::from(&v2.mean(Kind::Double)), 1.0);
     vs1.save(&filename).unwrap();
     let missing_variables = vs2.load_partial(&filename).unwrap();
-    assert_eq!(f64::from(&u1.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&u2.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&v2.mean(Kind::Float)), 2.0);
+    assert_eq!(f64::from(&u1.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&u2.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&v2.mean(Kind::Double)), 2.0);
     assert!(missing_variables.is_empty());
     fs::remove_file(filename).unwrap();
 }
@@ -111,14 +111,14 @@ fn save_and_load_var_store_incomplete_file() {
     tch::no_grad(|| {
         u1 += 42.0;
     });
-    assert_eq!(f64::from(&u1.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&u2.mean(Kind::Float)), 0.0);
-    assert_eq!(f64::from(&v2.mean(Kind::Float)), 1.0);
+    assert_eq!(f64::from(&u1.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&u2.mean(Kind::Double)), 0.0);
+    assert_eq!(f64::from(&v2.mean(Kind::Double)), 1.0);
     vs1.save(&filename).unwrap();
     vs2.load(&filename).unwrap();
-    assert_eq!(f64::from(&u1.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&u2.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&v2.mean(Kind::Float)), 1.0);
+    assert_eq!(f64::from(&u1.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&u2.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&v2.mean(Kind::Double)), 1.0);
     fs::remove_file(filename).unwrap();
 }
 
@@ -146,14 +146,14 @@ fn save_and_load_partial_var_store_incomplete_file() {
     tch::no_grad(|| {
         u1 += 42.0;
     });
-    assert_eq!(f64::from(&u1.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&u2.mean(Kind::Float)), 0.0);
-    assert_eq!(f64::from(&v2.mean(Kind::Float)), 1.0);
+    assert_eq!(f64::from(&u1.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&u2.mean(Kind::Double)), 0.0);
+    assert_eq!(f64::from(&v2.mean(Kind::Double)), 1.0);
     vs1.save(&filename).unwrap();
     let missing_variables = vs2.load_partial(&filename).unwrap();
-    assert_eq!(f64::from(&u1.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&u2.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&v2.mean(Kind::Float)), 1.0);
+    assert_eq!(f64::from(&u1.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&u2.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&v2.mean(Kind::Double)), 1.0);
     assert_eq!(missing_variables, vec!(String::from("a.b.t2")));
     fs::remove_file(filename).unwrap();
 }
@@ -275,15 +275,15 @@ fn save_and_load_with_group() {
         u1 += 42.0;
         v1 *= 2.0;
     });
-    assert_eq!(f64::from(&u1.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&v1.mean(Kind::Float)), 2.0);
-    assert_eq!(f64::from(&u2.mean(Kind::Float)), 0.0);
-    assert_eq!(f64::from(&v2.mean(Kind::Float)), 1.0);
+    assert_eq!(f64::from(&u1.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&v1.mean(Kind::Double)), 2.0);
+    assert_eq!(f64::from(&u2.mean(Kind::Double)), 0.0);
+    assert_eq!(f64::from(&v2.mean(Kind::Double)), 1.0);
     vs1.save(&filename).unwrap();
     vs2.load(&filename).unwrap();
-    assert_eq!(f64::from(&u1.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&u2.mean(Kind::Float)), 42.0);
-    assert_eq!(f64::from(&v2.mean(Kind::Float)), 2.0);
+    assert_eq!(f64::from(&u1.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&u2.mean(Kind::Double)), 42.0);
+    assert_eq!(f64::from(&v2.mean(Kind::Double)), 2.0);
     fs::remove_file(filename).unwrap();
 }
 

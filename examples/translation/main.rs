@@ -91,7 +91,7 @@ impl Decoder {
             enc_outputs.shallow_clone()
         } else {
             let shape = [sz1, MAX_LENGTH as i64 - sz2, sz3];
-            let zeros = Tensor::zeros(&shape, (Kind::Float, self.device));
+            let zeros = Tensor::zeros(&shape, (Kind::Double, self.device));
             Tensor::cat(&[enc_outputs, &zeros], 1)
         };
         let attn_applied = attn_weights.bmm(&enc_outputs).squeeze_dim(1);
@@ -102,7 +102,7 @@ impl Decoder {
         (
             self.linear
                 .forward(&state.value())
-                .log_softmax(-1, Kind::Float)
+                .log_softmax(-1, Kind::Double)
                 .squeeze_dim(1),
             state,
         )

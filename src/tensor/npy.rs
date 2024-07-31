@@ -297,7 +297,7 @@ mod tests {
         assert_eq!(
             h,
             Header {
-                descr: crate::Kind::Float,
+                descr: crate::Kind::Double,
                 fortran_order: true,
                 shape: vec![256, 1, 128]
             }

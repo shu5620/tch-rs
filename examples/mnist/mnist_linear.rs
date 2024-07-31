@@ -17,7 +17,7 @@ pub fn run() -> Result<()> {
     for epoch in 1..200 {
         let logits = m.train_images.mm(&ws) + &bs;
         let loss = logits
-            .log_softmax(-1, Kind::Float)
+            .log_softmax(-1, Kind::Double)
             .nll_loss(&m.train_labels);
         ws.zero_grad();
         bs.zero_grad();
@@ -30,8 +30,8 @@ pub fn run() -> Result<()> {
         let test_accuracy = test_logits
             .argmax(Some(-1), false)
             .eq_tensor(&m.test_labels)
-            .to_kind(Kind::Float)
-            .mean(Kind::Float)
+            .to_kind(Kind::Double)
+            .mean(Kind::Double)
             .double_value(&[]);
         println!(
             "epoch: {:4} train loss: {:8.5} test acc: {:5.2}%",

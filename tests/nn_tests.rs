@@ -7,7 +7,7 @@ fn optimizer_test() {
     tch::manual_seed(42);
     // Create some linear data.
     let xs = Tensor::of_slice(&(1..15).collect::<Vec<_>>())
-        .to_kind(Kind::Float)
+        .to_kind(Kind::Double)
         .view([-1, 1]);
     let ys = &xs * 0.42 + 1.337;
 
@@ -73,7 +73,7 @@ fn gradient_descent_test() {
     for _idx in 1..50 {
         let xs = Tensor::zeros(&[7], kind::FLOAT_CPU);
         let ys = Tensor::zeros(&[7], kind::FLOAT_CPU);
-        let loss = (my_module.forward(&xs) - ys).pow(2).sum(Kind::Float);
+        let loss = (my_module.forward(&xs) - ys).pow(2).sum(Kind::Double);
         opt.backward_step(&loss);
     }
 }
@@ -86,7 +86,7 @@ fn gradient_descent_test_clip_norm() {
     for _idx in 1..50 {
         let xs = Tensor::zeros(&[7], kind::FLOAT_CPU);
         let ys = Tensor::ones(&[7], kind::FLOAT_CPU);
-        let loss = (my_module.forward(&xs) - ys).pow(2).sum(Kind::Float);
+        let loss = (my_module.forward(&xs) - ys).pow(2).sum(Kind::Double);
         opt.backward_step_clip_norm(&loss, 0.1);
     }
 }
@@ -108,7 +108,7 @@ fn gradient_clip_test() {
         var3 *= -1;
     });
     let all = Tensor::cat(&[&var1, &(2 * &var2), &(2 * &var3)], 0);
-    let loss = all.pow(2).sum(Kind::Float);
+    let loss = all.pow(2).sum(Kind::Double);
     opt.zero_grad();
     loss.backward();
     let g1 = var1.grad();
@@ -118,7 +118,7 @@ fn gradient_clip_test() {
     assert_eq!(Vec::<f64>::from(&g2), [8.0]);
     assert_eq!(Vec::<f64>::from(&g3), [-8.0, -8.0]);
     // Test clipping the gradient by value.
-    let loss = all.pow(2).sum(Kind::Float);
+    let loss = all.pow(2).sum(Kind::Double);
     opt.zero_grad();
     loss.backward();
     opt.clip_grad_value(4.0);
@@ -126,7 +126,7 @@ fn gradient_clip_test() {
     assert_eq!(Vec::<f64>::from(&g2), [4.0]);
     assert_eq!(Vec::<f64>::from(&g3), [-4.0, -4.0]);
     // Test clipping the gradient norm.
-    let loss = all.pow(2).sum(Kind::Float);
+    let loss = all.pow(2).sum(Kind::Double);
     opt.zero_grad();
     loss.backward();
     opt.clip_grad_norm(1.0);
@@ -137,7 +137,7 @@ fn gradient_clip_test() {
 
 #[test]
 fn bn_test() {
-    let opts = (tch::Kind::Float, tch::Device::Cpu);
+    let opts = (tch::Kind::Double, tch::Device::Cpu);
     let vs = nn::VarStore::new(tch::Device::Cpu);
     let bn = nn::batch_norm1d(vs.root(), 40, Default::default());
     let x = Tensor::randn(&[10, 40], opts);
@@ -146,7 +146,7 @@ fn bn_test() {
 
 #[test]
 fn layer_norm_test() {
-    let opts = (tch::Kind::Float, tch::Device::Cpu);
+    let opts = (tch::Kind::Double, tch::Device::Cpu);
     let vs = nn::VarStore::new(tch::Device::Cpu);
     let ln = layer_norm(vs.root(), vec![5, 10, 10], Default::default());
     let x = Tensor::randn(&[20, 5, 10, 10], opts);
@@ -158,7 +158,7 @@ fn layer_norm_parameters_test() {
     tch::manual_seed(42);
     // Create some linear data.
     let xs = Tensor::of_slice(&[42.0, 42.0, 42.0, 24.0])
-        .to_kind(Kind::Float)
+        .to_kind(Kind::Double)
         .view([-1, 2]);
     let ys = &xs * 0.42 + 1.337;
 

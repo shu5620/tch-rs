@@ -47,7 +47,7 @@ pub fn main() -> Result<()> {
     let output = image
         .unsqueeze(0)
         .apply(&model)
-        .softmax(-1, tch::Kind::Float);
+        .softmax(-1, tch::Kind::Double);
 
     // Print the top 5 categories for this image.
     println!("Top 5 Predictions:");
