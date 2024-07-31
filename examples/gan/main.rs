@@ -111,7 +111,7 @@ pub fn main() -> Result<()> {
             - 1.
     };
     let rand_latent = || {
-        (Tensor::rand(&[BATCH_SIZE, LATENT_DIM, 1, 1], kind::FLOAT_CPU) * 2.0 - 1.0)
+        (Tensor::rand(&[BATCH_SIZE, LATENT_DIM, 1, 1], kind::DOUBLE_CPU) * 2.0 - 1.0)
             .to_device(device)
     };
 

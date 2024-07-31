@@ -449,10 +449,10 @@ fn strides() {
         assert_eq!(t.stride(), strides);
     }
 
-    let tensor = Tensor::zeros(&[2, 3, 4], tch::kind::FLOAT_CPU);
+    let tensor = Tensor::zeros(&[2, 3, 4], tch::kind::DOUBLE_CPU);
     check_stride(&tensor);
 
-    let tensor: Tensor = Tensor::ones(&[3, 4, 5, 6, 7, 8], tch::kind::FLOAT_CPU);
+    let tensor: Tensor = Tensor::ones(&[3, 4, 5, 6, 7, 8], tch::kind::DOUBLE_CPU);
     check_stride(&tensor);
 }
 

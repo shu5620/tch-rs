@@ -7,7 +7,7 @@
    reference python implementation.
 */
 use super::vec_gym_env::VecGymEnv;
-use tch::kind::{FLOAT_CPU, INT64_CPU};
+use tch::kind::{DOUBLE_CPU, INT64_CPU};
 use tch::{nn, nn::OptimizerConfig, Kind, Tensor};
 
 const ENV_NAME: &'static str = "SpaceInvadersNoFrameskip-v4";
@@ -51,7 +51,7 @@ struct FrameStack {
 impl FrameStack {
     fn new(nprocs: i64, nstack: i64) -> FrameStack {
         FrameStack {
-            data: Tensor::zeros(&[nprocs, nstack, 84, 84], FLOAT_CPU),
+            data: Tensor::zeros(&[nprocs, nstack, 84, 84], DOUBLE_CPU),
             nprocs,
             nstack,
         }
@@ -80,21 +80,21 @@ pub fn train() -> cpython::PyResult<()> {
     let model = model(&vs.root(), env.action_space());
     let mut opt = nn::Adam::default().build(&vs, 1e-4).unwrap();
 
-    let mut sum_rewards = Tensor::zeros(&[NPROCS], FLOAT_CPU);
+    let mut sum_rewards = Tensor::zeros(&[NPROCS], DOUBLE_CPU);
     let mut total_rewards = 0f64;
     let mut total_episodes = 0f64;
 
     let mut frame_stack = FrameStack::new(NPROCS, NSTACK);
     let _ = frame_stack.update(&env.reset()?, None);
-    let s_states = Tensor::zeros(&[NSTEPS + 1, NPROCS, NSTACK, 84, 84], FLOAT_CPU);
+    let s_states = Tensor::zeros(&[NSTEPS + 1, NPROCS, NSTACK, 84, 84], DOUBLE_CPU);
 
     let train_size = NSTEPS * NPROCS;
     for update_index in 0..UPDATES {
         s_states.get(0).copy_(&s_states.get(-1));
-        let s_values = Tensor::zeros(&[NSTEPS, NPROCS], FLOAT_CPU);
-        let s_rewards = Tensor::zeros(&[NSTEPS, NPROCS], FLOAT_CPU);
+        let s_values = Tensor::zeros(&[NSTEPS, NPROCS], DOUBLE_CPU);
+        let s_rewards = Tensor::zeros(&[NSTEPS, NPROCS], DOUBLE_CPU);
         let s_actions = Tensor::zeros(&[NSTEPS, NPROCS], INT64_CPU);
-        let s_masks = Tensor::zeros(&[NSTEPS, NPROCS], FLOAT_CPU);
+        let s_masks = Tensor::zeros(&[NSTEPS, NPROCS], DOUBLE_CPU);
         for s in 0..NSTEPS {
             let (critic, actor) = tch::no_grad(|| model(&s_states.get(s)));
             let probs = actor.softmax(-1, Kind::Double);
@@ -118,7 +118,7 @@ pub fn train() -> cpython::PyResult<()> {
             .narrow(0, 0, NSTEPS)
             .view([train_size, NSTACK, 84, 84]);
         let returns = {
-            let r = Tensor::zeros(&[NSTEPS + 1, NPROCS], FLOAT_CPU);
+            let r = Tensor::zeros(&[NSTEPS + 1, NPROCS], DOUBLE_CPU);
             let critic = tch::no_grad(|| model(&s_states.get(-1)).0);
             r.get(-1).copy_(&critic.view([NPROCS]));
             for s in (0..NSTEPS).rev() {

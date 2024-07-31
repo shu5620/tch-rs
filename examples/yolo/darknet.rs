@@ -224,7 +224,7 @@ fn detect(xs: &Tensor, image_height: i64, classes: i64, anchors: &Vec<(i64, i64)
         .transpose(1, 2)
         .contiguous()
         .view((bsize, grid_size * grid_size * nanchors, bbox_attrs));
-    let grid = Tensor::arange(grid_size, tch::kind::FLOAT_CPU);
+    let grid = Tensor::arange(grid_size, tch::kind::DOUBLE_CPU);
     let a = grid.repeat(&[grid_size, 1]);
     let b = a.tr().contiguous();
     let x_offset = a.view((-1, 1));

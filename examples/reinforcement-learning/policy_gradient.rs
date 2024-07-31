@@ -75,7 +75,7 @@ pub fn run() -> cpython::PyResult<()> {
         let rewards = accumulate_rewards(&steps);
         let rewards = Tensor::of_slice(&rewards).to_kind(Double);
         let action_mask =
-            Tensor::zeros(&[batch_size, 2], tch::kind::FLOAT_CPU).scatter_value(1, &actions, 1.0);
+            Tensor::zeros(&[batch_size, 2], tch::kind::DOUBLE_CPU).scatter_value(1, &actions, 1.0);
         let obs: Vec<Tensor> = steps.into_iter().map(|s| s.obs).collect();
         let logits = Tensor::stack(&obs, 0).apply(&model);
         let log_probs =

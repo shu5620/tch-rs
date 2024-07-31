@@ -8,7 +8,7 @@
 */
 use super::gym_env::GymEnv;
 use tch::{
-    kind::{FLOAT_CPU, INT64_CPU},
+    kind::{DOUBLE_CPU, INT64_CPU},
     nn,
     nn::OptimizerConfig,
     Device,
@@ -48,7 +48,7 @@ struct OuNoise {
 
 impl OuNoise {
     fn new(mu: f64, theta: f64, sigma: f64, num_actions: usize) -> Self {
-        let state = Tensor::ones(&[num_actions as _], FLOAT_CPU);
+        let state = Tensor::ones(&[num_actions as _], DOUBLE_CPU);
         Self {
             mu,
             theta,
@@ -59,7 +59,7 @@ impl OuNoise {
 
     fn sample(&mut self) -> &Tensor {
         let dx = self.theta * (self.mu - &self.state)
-            + self.sigma * Tensor::randn(&self.state.size(), FLOAT_CPU);
+            + self.sigma * Tensor::randn(&self.state.size(), DOUBLE_CPU);
         self.state += dx;
         &self.state
     }
@@ -78,10 +78,10 @@ struct ReplayBuffer {
 impl ReplayBuffer {
     fn new(capacity: usize, num_obs: usize, num_actions: usize) -> Self {
         Self {
-            obs: Tensor::zeros(&[capacity as _, num_obs as _], FLOAT_CPU),
-            next_obs: Tensor::zeros(&[capacity as _, num_obs as _], FLOAT_CPU),
-            rewards: Tensor::zeros(&[capacity as _, 1], FLOAT_CPU),
-            actions: Tensor::zeros(&[capacity as _, num_actions as _], FLOAT_CPU),
+            obs: Tensor::zeros(&[capacity as _, num_obs as _], DOUBLE_CPU),
+            next_obs: Tensor::zeros(&[capacity as _, num_obs as _], DOUBLE_CPU),
+            rewards: Tensor::zeros(&[capacity as _, 1], DOUBLE_CPU),
+            actions: Tensor::zeros(&[capacity as _, num_actions as _], DOUBLE_CPU),
             capacity,
             len: 0,
             i: 0,

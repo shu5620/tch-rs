@@ -71,8 +71,8 @@ fn gradient_descent_test() {
     let my_module = my_module(vs.root(), 7);
     let mut opt = nn::Sgd::default().build(&vs, 1e-2).unwrap();
     for _idx in 1..50 {
-        let xs = Tensor::zeros(&[7], kind::FLOAT_CPU);
-        let ys = Tensor::zeros(&[7], kind::FLOAT_CPU);
+        let xs = Tensor::zeros(&[7], kind::DOUBLE_CPU);
+        let ys = Tensor::zeros(&[7], kind::DOUBLE_CPU);
         let loss = (my_module.forward(&xs) - ys).pow(2).sum(Kind::Double);
         opt.backward_step(&loss);
     }
@@ -84,8 +84,8 @@ fn gradient_descent_test_clip_norm() {
     let my_module = my_module(vs.root(), 7);
     let mut opt = nn::Sgd::default().build(&vs, 1e-2).unwrap();
     for _idx in 1..50 {
-        let xs = Tensor::zeros(&[7], kind::FLOAT_CPU);
-        let ys = Tensor::ones(&[7], kind::FLOAT_CPU);
+        let xs = Tensor::zeros(&[7], kind::DOUBLE_CPU);
+        let ys = Tensor::ones(&[7], kind::DOUBLE_CPU);
         let loss = (my_module.forward(&xs) - ys).pow(2).sum(Kind::Double);
         opt.backward_step_clip_norm(&loss, 0.1);
     }
@@ -206,12 +206,12 @@ fn gru_test(rnn_config: nn::RNNConfig) {
     let layer_dim = rnn_config.num_layers * num_directions;
     //
     // step test
-    let input = Tensor::randn(&[batch_dim, input_dim], kind::FLOAT_CPU);
+    let input = Tensor::randn(&[batch_dim, input_dim], kind::DOUBLE_CPU);
     let nn::GRUState(output) = gru.step(&input, &gru.zero_state(batch_dim));
     assert_eq!(output.size(), [layer_dim, batch_dim, output_dim]);
 
     // seq test
-    let input = Tensor::randn(&[batch_dim, seq_len, input_dim], kind::FLOAT_CPU);
+    let input = Tensor::randn(&[batch_dim, seq_len, input_dim], kind::DOUBLE_CPU);
     let (output, _) = gru.seq(&input);
     assert_eq!(
         output.size(),
@@ -254,13 +254,13 @@ fn lstm_test(rnn_config: nn::RNNConfig) {
     let layer_dim = rnn_config.num_layers * num_directions;
     //
     // step test
-    let input = Tensor::randn(&[batch_dim, input_dim], kind::FLOAT_CPU);
+    let input = Tensor::randn(&[batch_dim, input_dim], kind::DOUBLE_CPU);
     let nn::LSTMState((h, c)) = lstm.step(&input, &lstm.zero_state(batch_dim));
     assert_eq!(h.size(), [layer_dim, batch_dim, output_dim]);
     assert_eq!(c.size(), [layer_dim, batch_dim, output_dim]);
 
     // seq test
-    let input = Tensor::randn(&[batch_dim, seq_len, input_dim], kind::FLOAT_CPU);
+    let input = Tensor::randn(&[batch_dim, seq_len, input_dim], kind::DOUBLE_CPU);
     let (output, _) = lstm.seq(&input);
     assert_eq!(
         output.size(),
@@ -344,7 +344,7 @@ fn linear_test(linear_config: nn::LinearConfig) {
     let linear = nn::linear(&vs.root(), input_dim, output_dim, linear_config);
 
     // forward test
-    let input = Tensor::randint(10, &[batch_dim, input_dim], kind::FLOAT_CPU);
+    let input = Tensor::randint(10, &[batch_dim, input_dim], kind::DOUBLE_CPU);
     let expected_var_store_size = if linear_config.bias { 2 } else { 1 };
 
     let output = linear.forward(&input);

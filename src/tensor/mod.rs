@@ -273,7 +273,7 @@ impl Tensor {
     pub fn onehot(&self, labels: i64) -> Tensor {
         Tensor::zeros(
             &[self.size(), vec![labels]].concat(),
-            crate::wrappers::kind::FLOAT_CPU,
+            crate::wrappers::kind::DOUBLE_CPU,
         )
         .scatter_value_(-1, &self.unsqueeze(-1).to_kind(Kind::Int64), 1.0)
     }
