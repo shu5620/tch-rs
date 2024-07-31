@@ -1,19 +1,31 @@
 //! VGG models.
 //!
 //! Pre-trained weights for the vgg-13/16/19 models can be found here:
-//! <https://github.com/LaurentMazare/tch-rs/releases/download/mw/vgg13.ot>
-//! <https://github.com/LaurentMazare/tch-rs/releases/download/mw/vgg16.ot>
-//! <https://github.com/LaurentMazare/tch-rs/releases/download/mw/vgg19.ot>
+//! https://github.com/LaurentMazare/ocaml-torch/releases/download/v0.1-unstable/vgg13.ot
+//! https://github.com/LaurentMazare/ocaml-torch/releases/download/v0.1-unstable/vgg16.ot
+//! https://github.com/LaurentMazare/ocaml-torch/releases/download/v0.1-unstable/vgg19.ot
 use crate::{nn, nn::Conv2D, nn::SequentialT};
 
 // Each list element contains multiple convolutions with some specified number
 // of features followed by a single max-pool layer.
 fn layers_a() -> Vec<Vec<i64>> {
-    vec![vec![64], vec![128], vec![256, 256], vec![512, 512], vec![512, 512]]
+    vec![
+        vec![64],
+        vec![128],
+        vec![256, 256],
+        vec![512, 512],
+        vec![512, 512],
+    ]
 }
 
 fn layers_b() -> Vec<Vec<i64>> {
-    vec![vec![64, 64], vec![128, 128], vec![256, 256], vec![512, 512], vec![512, 512]]
+    vec![
+        vec![64, 64],
+        vec![128, 128],
+        vec![256, 256],
+        vec![512, 512],
+        vec![512, 512],
+    ]
 }
 fn layers_d() -> Vec<Vec<i64>> {
     vec![
@@ -35,8 +47,12 @@ fn layers_e() -> Vec<Vec<i64>> {
 }
 
 fn conv2d(p: nn::Path, c_in: i64, c_out: i64) -> Conv2D {
-    let conv2d_cfg = nn::ConvConfig { stride: 1, padding: 1, ..Default::default() };
-    nn::conv2d(p, c_in, c_out, 3, conv2d_cfg)
+    let conv2d_cfg = nn::ConvConfig {
+        stride: 1,
+        padding: 1,
+        ..Default::default()
+    };
+    nn::conv2d(&p, c_in, c_out, 3, conv2d_cfg)
 }
 
 fn vgg(p: &nn::Path, cfg: Vec<Vec<i64>>, nclasses: i64, batch_norm: bool) -> SequentialT {
@@ -50,7 +66,11 @@ fn vgg(p: &nn::Path, cfg: Vec<Vec<i64>>, nclasses: i64, batch_norm: bool) -> Seq
             seq = seq.add(conv2d(&f / &l.to_string(), c_in, c_out));
             if batch_norm {
                 let l = seq.len();
-                seq = seq.add(nn::batch_norm2d(&f / &l.to_string(), c_out, Default::default()));
+                seq = seq.add(nn::batch_norm2d(
+                    &f / &l.to_string(),
+                    c_out,
+                    Default::default(),
+                ));
             };
             seq = seq.add_fn(|xs| xs.relu());
             c_in = c_out;

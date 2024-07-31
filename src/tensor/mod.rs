@@ -3,12 +3,10 @@ use crate::{Device, Kind, TchError};
 use torch_sys::*;
 
 mod convert;
-pub mod display;
 pub mod index;
 mod iter;
 mod npy;
 mod ops;
-mod safetensors;
 
 pub use super::wrappers::tensor::{
     autocast, no_grad, no_grad_guard, with_grad, NoGradGuard, Reduction, Tensor,
@@ -93,11 +91,11 @@ impl Shape for (i64, i64, i64, i64) {
 
 impl Tensor {
     pub fn f_view<T: Shape>(&self, s: T) -> Result<Tensor, TchError> {
-        self.f_view_(&s.to_shape())
+        self.f_view_(&*s.to_shape())
     }
 
     pub fn view<T: Shape>(&self, s: T) -> Tensor {
-        self.view_(&s.to_shape())
+        self.view_(&*s.to_shape())
     }
 
     pub fn f_zero_pad1d(&self, left: i64, right: i64) -> Result<Tensor, TchError> {
@@ -107,7 +105,7 @@ impl Tensor {
                 self.size()
             )));
         }
-        self.f_constant_pad_nd([left, right])
+        self.f_constant_pad_nd(&[left, right])
     }
 
     pub fn zero_pad1d(&self, left: i64, right: i64) -> Tensor {
@@ -127,7 +125,7 @@ impl Tensor {
                 self.size()
             )));
         }
-        self.f_constant_pad_nd([left, right, top, bottom])
+        self.f_constant_pad_nd(&[left, right, top, bottom])
     }
 
     pub fn zero_pad2d(&self, left: i64, right: i64, top: i64, bottom: i64) -> Tensor {
@@ -137,15 +135,53 @@ impl Tensor {
 
 impl<T: crate::kind::Element> From<&[T]> for Tensor {
     fn from(v: &[T]) -> Tensor {
-        Tensor::from_slice(v)
+        Tensor::of_slice(v)
     }
 }
 
 impl<T: crate::kind::Element> From<T> for Tensor {
     fn from(v: T) -> Tensor {
-        Tensor::from_slice(&[v]).view(())
+        Tensor::of_slice(&[v]).view(())
     }
 }
+
+impl std::fmt::Debug for Tensor {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.defined() {
+            match self.f_kind() {
+                Err(err) => write!(f, "Tensor[{:?}, {:?}]", self.size(), err),
+                Ok(kind) => {
+                    let (is_int, is_float) = match kind {
+                        Kind::Int | Kind::Int8 | Kind::Uint8 | Kind::Int16 | Kind::Int64 => {
+                            (true, false)
+                        }
+                        Kind::BFloat16
+                        | Kind::QInt8
+                        | Kind::QUInt8
+                        | Kind::QInt32
+                        | Kind::Half
+                        | Kind::Float
+                        | Kind::Double => (false, true),
+                        Kind::Bool
+                        | Kind::ComplexHalf
+                        | Kind::ComplexFloat
+                        | Kind::ComplexDouble => (false, false),
+                    };
+                    match (self.size().as_slice(), is_int, is_float) {
+                        ([], true, false) => write!(f, "[{}]", i64::from(self)),
+                        ([s], true, false) if *s < 10 => write!(f, "{:?}", Vec::<i64>::from(self)),
+                        ([], false, true) => write!(f, "[{}]", f64::from(self)),
+                        ([s], false, true) if *s < 10 => write!(f, "{:?}", Vec::<f64>::from(self)),
+                        _ => write!(f, "Tensor[{:?}, {:?}]", self.size(), self.f_kind()),
+                    }
+                }
+            }
+        } else {
+            write!(f, "Tensor[Undefined]")
+        }
+    }
+}
+
 impl Tensor {
     /// Casts a tensor to a specified kind.
     pub fn to_kind(&self, kind: Kind) -> Tensor {
@@ -164,18 +200,21 @@ impl Tensor {
 impl Tensor {
     /// Computes the cross-entropy loss based on some logits and targets.
     pub fn cross_entropy_for_logits(&self, targets: &Tensor) -> Tensor {
-        self.log_softmax(-1, Kind::Float).nll_loss(targets)
+        self.log_softmax(-1, Kind::Float).nll_loss(&targets)
     }
 
     /// Returns the average accuracy for some given logits assuming that
     /// targets represent ground-truth.
     pub fn accuracy_for_logits(&self, targets: &Tensor) -> Tensor {
-        self.argmax(-1, false).eq_tensor(targets).to_kind(Kind::Float).mean(Kind::Float)
+        self.argmax(-1, false)
+            .eq_tensor(&targets)
+            .to_kind(Kind::Float)
+            .mean(Kind::Float)
     }
 
     pub fn random_batch(&self, batch_size: i64) -> Tensor {
         let len: i64 = self.size()[0];
-        let index = Tensor::randint(len, [batch_size], (Kind::Int64, self.device()));
+        let index = Tensor::randint(len, &[batch_size], (Kind::Int64, self.device()));
         self.index_select(0, &index)
     }
 
@@ -183,14 +222,18 @@ impl Tensor {
         let len1: i64 = t1.size()[0];
         let len2: i64 = t2.size()[0];
         if len1 != len2 {
-            panic!("random_batch2: shape mismatch {:?} {:?}", t1.size(), t2.size())
+            panic!(
+                "random_batch2: shape mismatch {:?} {:?}",
+                t1.size(),
+                t2.size()
+            )
         }
         let device1 = t1.device();
         let device2 = t2.device();
         if device1 != device2 {
-            panic!("random_batch2: device mismatch {device1:?} {device2:?}")
+            panic!("random_batch2: device mismatch {:?} {:?}", device1, device2)
         }
-        let index = Tensor::randint(len1, [batch_size], (Kind::Int64, device1));
+        let index = Tensor::randint(len1, &[batch_size], (Kind::Int64, device1));
         let batch1 = t1.index_select(0, &index);
         let batch2 = t2.index_select(0, &index);
         (batch1, batch2)
@@ -206,11 +249,11 @@ impl Tensor {
     }
 
     pub fn avg_pool2d_default(&self, ksize: i64) -> Tensor {
-        self.avg_pool2d([ksize, ksize], [ksize, ksize], [0, 0], false, true, 1)
+        self.avg_pool2d(&[ksize, ksize], &[ksize, ksize], &[0, 0], false, true, 1)
     }
 
     pub fn max_pool2d_default(&self, ksize: i64) -> Tensor {
-        self.max_pool2d([ksize, ksize], [ksize, ksize], [0, 0], [1, 1], false)
+        self.max_pool2d(&[ksize, ksize], &[ksize, ksize], &[0, 0], &[1, 1], false)
     }
 
     /// Flattens a tensor.
@@ -218,7 +261,8 @@ impl Tensor {
     /// This returns a flattened version of the given tensor. The first dimension
     /// is preserved as it is assumed to be the mini-batch dimension.
     pub fn flat_view(&self) -> Tensor {
-        self.view((self.size()[0], -1))
+        let batch_size = self.size()[0] as i64;
+        self.view((batch_size, -1))
     }
 
     /// Converts a tensor to a one-hot encoded version.
@@ -227,24 +271,26 @@ impl Tensor {
     /// [N1, ..., Nk, labels]. The returned tensor uses float values.
     /// Elements of the input vector are expected to be between 0 and labels-1.
     pub fn onehot(&self, labels: i64) -> Tensor {
-        Tensor::zeros([self.size(), vec![labels]].concat(), (Kind::Float, self.device()))
-            .scatter_value_(-1, &self.unsqueeze(-1).to_kind(Kind::Int64), 1.0)
+        Tensor::zeros(
+            &[self.size(), vec![labels]].concat(),
+            crate::wrappers::kind::FLOAT_CPU,
+        )
+        .scatter_value_(-1, &self.unsqueeze(-1).to_kind(Kind::Int64), 1.0)
     }
 
     /// Copies a tensor to a newly allocated tensor using the same shape and device.
     pub fn copy(&self) -> Tensor {
         let mut result = self.zeros_like();
-        result.copy_(self);
+        result.copy_(&self);
         result
     }
 
-    /// Copies the data from a two dimensional slice in a tensor object.
-    pub fn from_slice2<T, U>(v: &[U]) -> Tensor
+    pub fn of_slice2<T, U>(v: &[U]) -> Tensor
     where
         T: crate::kind::Element,
         U: AsRef<[T]>,
     {
-        let inner: Vec<Tensor> = v.iter().map(|v| Tensor::from_slice(v.as_ref())).collect();
+        let inner: Vec<Tensor> = v.iter().map(|v| Tensor::of_slice(v.as_ref())).collect();
         Tensor::stack(&inner, 0)
     }
 

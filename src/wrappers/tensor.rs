@@ -1,4 +1,3 @@
-use super::stream::ReadSeekAdapter;
 use super::utils::{path_to_cstring, ptr_to_string};
 use super::{
     device::{Cuda, Device},
@@ -8,9 +7,7 @@ use super::{
 use crate::TchError;
 use libc::{c_char, c_int, c_void};
 use std::borrow::Borrow;
-use std::io::{Read, Seek, Write};
 use std::path::Path;
-use torch_sys::io::ReadStream;
 use torch_sys::*;
 
 /// A tensor object.
@@ -23,7 +20,7 @@ unsafe impl Send for Tensor {}
 
 pub extern "C" fn add_callback(data: *mut c_void, name: *const c_char, c_tensor: *mut C_tensor) {
     let name = unsafe { std::ffi::CStr::from_ptr(name).to_str().unwrap() };
-    let name = name.replace('|', ".");
+    let name = name.replace("|", ".");
     let v: &mut Vec<(String, Tensor)> = unsafe { &mut *(data as *mut Vec<(String, Tensor)>) };
     v.push((name, Tensor { c_tensor }))
 }
@@ -91,7 +88,7 @@ impl Tensor {
     pub fn size1(&self) -> Result<i64, TchError> {
         match self.size().as_slice() {
             &[s0] => Ok(s0),
-            size => Err(TchError::Shape(format!("expected one dim, got {size:?}"))),
+            size => Err(TchError::Shape(format!("expected one dim, got {:?}", size))),
         }
     }
 
@@ -99,7 +96,10 @@ impl Tensor {
     pub fn size2(&self) -> Result<(i64, i64), TchError> {
         match self.size().as_slice() {
             &[s0, s1] => Ok((s0, s1)),
-            size => Err(TchError::Shape(format!("expected two dims, got {size:?}"))),
+            size => Err(TchError::Shape(format!(
+                "expected two dims, got {:?}",
+                size
+            ))),
         }
     }
 
@@ -107,7 +107,10 @@ impl Tensor {
     pub fn size3(&self) -> Result<(i64, i64, i64), TchError> {
         match self.size().as_slice() {
             &[s0, s1, s2] => Ok((s0, s1, s2)),
-            size => Err(TchError::Shape(format!("expected three dims, got {size:?}"))),
+            size => Err(TchError::Shape(format!(
+                "expected three dims, got {:?}",
+                size
+            ))),
         }
     }
 
@@ -115,7 +118,10 @@ impl Tensor {
     pub fn size4(&self) -> Result<(i64, i64, i64, i64), TchError> {
         match self.size().as_slice() {
             &[s0, s1, s2, s3] => Ok((s0, s1, s2, s3)),
-            size => Err(TchError::Shape(format!("expected four dims, got {size:?}"))),
+            size => Err(TchError::Shape(format!(
+                "expected four dims, got {:?}",
+                size
+            ))),
         }
     }
 
@@ -123,7 +129,10 @@ impl Tensor {
     pub fn size5(&self) -> Result<(i64, i64, i64, i64, i64), TchError> {
         match self.size().as_slice() {
             &[s0, s1, s2, s3, s4] => Ok((s0, s1, s2, s3, s4)),
-            size => Err(TchError::Shape(format!("expected five dims, got {size:?}"))),
+            size => Err(TchError::Shape(format!(
+                "expected five dims, got {:?}",
+                size
+            ))),
         }
     }
 
@@ -131,7 +140,10 @@ impl Tensor {
     pub fn size6(&self) -> Result<(i64, i64, i64, i64, i64, i64), TchError> {
         match self.size().as_slice() {
             &[s0, s1, s2, s3, s4, s5] => Ok((s0, s1, s2, s3, s4, s5)),
-            size => Err(TchError::Shape(format!("expected six dims, got {size:?}"))),
+            size => Err(TchError::Shape(format!(
+                "expected six dims, got {:?}",
+                size
+            ))),
         }
     }
 
@@ -147,7 +159,7 @@ impl Tensor {
     pub fn stride1(&self) -> Result<i64, TchError> {
         match self.stride().as_slice() {
             &[s0] => Ok(s0),
-            size => Err(TchError::Shape(format!("expected one dim, got {size:?}"))),
+            size => Err(TchError::Shape(format!("expected one dim, got {:?}", size))),
         }
     }
 
@@ -155,7 +167,10 @@ impl Tensor {
     pub fn stride2(&self) -> Result<(i64, i64), TchError> {
         match self.stride().as_slice() {
             &[s0, s1] => Ok((s0, s1)),
-            size => Err(TchError::Shape(format!("expected two dims, got {size:?}"))),
+            size => Err(TchError::Shape(format!(
+                "expected two dims, got {:?}",
+                size
+            ))),
         }
     }
 
@@ -163,7 +178,10 @@ impl Tensor {
     pub fn stride3(&self) -> Result<(i64, i64, i64), TchError> {
         match self.stride().as_slice() {
             &[s0, s1, s2] => Ok((s0, s1, s2)),
-            size => Err(TchError::Shape(format!("expected three dims, got {size:?}"))),
+            size => Err(TchError::Shape(format!(
+                "expected three dims, got {:?}",
+                size
+            ))),
         }
     }
 
@@ -171,7 +189,10 @@ impl Tensor {
     pub fn stride4(&self) -> Result<(i64, i64, i64, i64), TchError> {
         match self.stride().as_slice() {
             &[s0, s1, s2, s3] => Ok((s0, s1, s2, s3)),
-            size => Err(TchError::Shape(format!("expected four dims, got {size:?}"))),
+            size => Err(TchError::Shape(format!(
+                "expected four dims, got {:?}",
+                size
+            ))),
         }
     }
 
@@ -179,7 +200,10 @@ impl Tensor {
     pub fn stride5(&self) -> Result<(i64, i64, i64, i64, i64), TchError> {
         match self.stride().as_slice() {
             &[s0, s1, s2, s3, s4] => Ok((s0, s1, s2, s3, s4)),
-            size => Err(TchError::Shape(format!("expected five dims, got {size:?}"))),
+            size => Err(TchError::Shape(format!(
+                "expected five dims, got {:?}",
+                size
+            ))),
         }
     }
 
@@ -187,7 +211,10 @@ impl Tensor {
     pub fn stride6(&self) -> Result<(i64, i64, i64, i64, i64, i64), TchError> {
         match self.stride().as_slice() {
             &[s0, s1, s2, s3, s4, s5] => Ok((s0, s1, s2, s3, s4, s5)),
-            size => Err(TchError::Shape(format!("expected six dims, got {size:?}"))),
+            size => Err(TchError::Shape(format!(
+                "expected six dims, got {:?}",
+                size
+            ))),
         }
     }
 
@@ -195,7 +222,7 @@ impl Tensor {
     /// an error on undefined tensors and unsupported data types.
     pub fn f_kind(&self) -> Result<Kind, TchError> {
         let kind = unsafe_torch!(at_scalar_type(self.c_tensor));
-        Kind::from_c_int(kind)
+        Kind::of_c_int(kind)
     }
 
     /// Returns the kind of elements stored in the input tensor. Panics
@@ -207,7 +234,7 @@ impl Tensor {
     /// Returns the device on which the input tensor is located.
     pub fn device(&self) -> Device {
         let device = unsafe_torch!(at_device(self.c_tensor));
-        Device::from_c_int(device)
+        Device::of_c_int(device)
     }
 
     /// Prints the input tensor.
@@ -269,11 +296,6 @@ impl Tensor {
         unsafe_torch!(at_is_sparse(self.c_tensor) != 0)
     }
 
-    // Returns true if the tensor if contiguous
-    pub fn is_contiguous(&self) -> bool {
-        unsafe_torch!(at_is_contiguous(self.c_tensor) != 0)
-    }
-
     /// Zeroes the gradient tensor attached to this tensor if defined.
     pub fn zero_grad(&mut self) {
         let mut grad = self.grad();
@@ -322,7 +344,10 @@ impl Tensor {
             keep_graph as c_int,
             create_graph as c_int,
         ));
-        Ok(outputs.into_iter().map(|c_tensor| Tensor { c_tensor }).collect())
+        Ok(outputs
+            .into_iter()
+            .map(|c_tensor| Tensor { c_tensor })
+            .collect())
     }
 
     pub fn run_backward<T1, T2>(
@@ -342,7 +367,7 @@ impl Tensor {
     pub fn f_copy_data_u8(&self, dst: &mut [u8], numel: usize) -> Result<(), TchError> {
         let elt_size_in_bytes = self.f_kind()?.elt_size_in_bytes();
         if dst.len() < numel * elt_size_in_bytes {
-            return Err(TchError::Shape(format!("slice len < {numel}")));
+            return Err(TchError::Shape(format!("slice len < {}", numel)));
         }
         unsafe_torch_err!(at_copy_data(
             self.c_tensor,
@@ -384,7 +409,8 @@ impl Tensor {
         found_inf: &mut Tensor,
         inv_scale: &Tensor,
     ) {
-        self.f_internal_amp_non_finite_check_and_unscale(found_inf, inv_scale).unwrap()
+        self.f_internal_amp_non_finite_check_and_unscale(found_inf, inv_scale)
+            .unwrap()
     }
 
     /// Copies `numel` elements from `self` to `dst`.
@@ -406,7 +432,7 @@ impl Tensor {
             )));
         }
         if dst.len() < numel {
-            return Err(TchError::Shape(format!("slice len < {numel}")));
+            return Err(TchError::Shape(format!("slice len < {}", numel)));
         }
         unsafe_torch_err!(at_copy_data(
             self.c_tensor,
@@ -429,7 +455,7 @@ impl Tensor {
 
     // This is similar to vec_... but faster as it directly blits the data.
     /// Converts a slice to a tensor.
-    pub fn f_from_slice<T: kind::Element>(data: &[T]) -> Result<Tensor, TchError> {
+    pub fn f_of_slice<T: kind::Element>(data: &[T]) -> Result<Tensor, TchError> {
         let data_len = data.len();
         let data = data.as_ptr() as *const c_void;
         let c_tensor = unsafe_torch_err!(at_tensor_of_data(
@@ -443,12 +469,12 @@ impl Tensor {
     }
 
     /// Converts a slice to a tensor.
-    pub fn from_slice<T: kind::Element>(data: &[T]) -> Tensor {
-        Self::f_from_slice(data).unwrap()
+    pub fn of_slice<T: kind::Element>(data: &[T]) -> Tensor {
+        Self::f_of_slice(data).unwrap()
     }
 
     /// Converts some byte data to a tensor with some specified kind and shape.
-    pub fn f_from_data_size(data: &[u8], size: &[i64], kind: Kind) -> Result<Tensor, TchError> {
+    pub fn f_of_data_size(data: &[u8], size: &[i64], kind: Kind) -> Result<Tensor, TchError> {
         let data = data.as_ptr() as *const c_void;
         let elt_size_in_bytes = kind.elt_size_in_bytes();
         let c_tensor = unsafe_torch_err!(at_tensor_of_data(
@@ -462,11 +488,10 @@ impl Tensor {
     }
 
     /// Creates a tensor from data that is assumed to be initialized.
-    /// Resize operations are not allowed on this tensor without copying the data first.
-    /// An empty strides slice will result in using the default strides.
+    /// Resize operations are now allowed on this tensor without copying the data first.
     /// # Safety
-    ///   Behavior is undefined if `data` points to invalid data.
-    pub unsafe fn f_from_blob(
+    ///   This will panic if `data` points to invalid data.
+    pub unsafe fn f_of_blob(
         data: *const u8,
         size: &[i64],
         strides: &[i64],
@@ -488,23 +513,22 @@ impl Tensor {
     }
 
     /// Creates a tensor from data that is assumed to be initialized.
-    /// Resize operations are not allowed on this tensor without copying the data first.
-    /// An empty strides slice will result in using the default strides.
+    /// Resize operations are now allowed on this tensor without copying the data first.
     /// # Safety
-    ///   Behavior is undefined if `data` points to invalid data.
-    pub unsafe fn from_blob(
+    ///   This will panic if `data` points to invalid data.
+    pub unsafe fn of_blob(
         data: *const u8,
         size: &[i64],
         strides: &[i64],
         kind: Kind,
         device: Device,
     ) -> Tensor {
-        Self::f_from_blob(data, size, strides, kind, device).unwrap()
+        Self::f_of_blob(data, size, strides, kind, device).unwrap()
     }
 
     /// Converts some byte data to a tensor with some specified kind and shape.
-    pub fn from_data_size(data: &[u8], size: &[i64], kind: Kind) -> Tensor {
-        Self::f_from_data_size(data, size, kind).unwrap()
+    pub fn of_data_size(data: &[u8], size: &[i64], kind: Kind) -> Tensor {
+        Self::f_of_data_size(data, size, kind).unwrap()
     }
 
     /// Returns a new tensor that share storage with the input tensor.
@@ -544,35 +568,12 @@ impl Tensor {
         Ok(Tensor { c_tensor })
     }
 
-    /// Loads a tensor from a stream.
-    ///
-    /// The file format is the same as the one used by the PyTorch C++ API.
-    pub fn load_from_stream<T: Read + Seek>(stream: T) -> Result<Tensor, TchError> {
-        let adapter = ReadSeekAdapter::new(stream);
-        let boxed_stream: Box<Box<dyn ReadStream>> = Box::new(Box::new(adapter));
-        let c_tensor =
-            unsafe_torch_err!(at_load_from_stream(Box::into_raw(boxed_stream) as *mut c_void,));
-        Ok(Tensor { c_tensor })
-    }
-
     /// Saves a tensor to a file.
     ///
     /// The file format is the same as the one used by the PyTorch C++ API.
     pub fn save<T: AsRef<Path>>(&self, path: T) -> Result<(), TchError> {
         let path = path_to_cstring(path)?;
         unsafe_torch_err!(at_save(self.c_tensor, path.as_ptr()));
-        Ok(())
-    }
-
-    /// Saves a tensor to a stream.
-    ///
-    /// The file format is the same as the one used by the PyTorch C++ API.
-    pub fn save_to_stream<W: Write>(&self, stream: W) -> Result<(), TchError> {
-        let boxed_stream: Box<Box<dyn Write>> = Box::new(Box::new(stream));
-        unsafe_torch_err!(at_save_to_stream(
-            self.c_tensor,
-            Box::into_raw(boxed_stream) as *mut c_void,
-        ));
         Ok(())
     }
 
@@ -584,10 +585,13 @@ impl Tensor {
         path: P,
     ) -> Result<(), TchError> {
         let path = path_to_cstring(path)?;
-        let c_tensors = named_tensors.iter().map(|nt| nt.1.as_ref().c_tensor).collect::<Vec<_>>();
+        let c_tensors = named_tensors
+            .iter()
+            .map(|nt| nt.1.as_ref().c_tensor)
+            .collect::<Vec<_>>();
         let names = named_tensors
             .iter()
-            .map(|nt| nt.0.as_ref().replace('.', "|").into_bytes())
+            .map(|nt| nt.0.as_ref().replace(".", "|").into_bytes())
             .map(std::ffi::CString::new)
             .collect::<Result<Vec<_>, _>>()?;
         let name_ptrs = names.iter().map(|n| n.as_ptr()).collect::<Vec<_>>();
@@ -600,34 +604,9 @@ impl Tensor {
         Ok(())
     }
 
-    /// Saves some named tensors to a stream
-    ///
-    /// The file format is the same as the one used by the PyTorch C++ API.
-    pub fn save_multi_to_stream<S: AsRef<str>, T: AsRef<Tensor>, W: Write>(
-        named_tensors: &[(S, T)],
-        stream: W,
-    ) -> Result<(), TchError> {
-        let boxed_stream: Box<Box<dyn Write>> = Box::new(Box::new(stream));
-        let c_tensors = named_tensors.iter().map(|nt| nt.1.as_ref().c_tensor).collect::<Vec<_>>();
-        let names = named_tensors
-            .iter()
-            .map(|nt| nt.0.as_ref().replace('.', "|").into_bytes())
-            .map(std::ffi::CString::new)
-            .collect::<Result<Vec<_>, _>>()?;
-        let name_ptrs = names.iter().map(|n| n.as_ptr()).collect::<Vec<_>>();
-        unsafe_torch_err!(at_save_multi_to_stream(
-            c_tensors.as_ptr(),
-            name_ptrs.as_ptr(),
-            names.len() as i32,
-            Box::into_raw(boxed_stream) as *mut c_void,
-        ));
-        Ok(())
-    }
-
     /// Loads some named tensors from a file
     ///
-    /// The file format is the same as the one used for modules in the PyTorch C++ API.
-    /// It commonly uses the .ot extension.
+    /// The file format is the same as the one used by the PyTorch C++ API.
     pub fn load_multi<T: AsRef<Path>>(path: T) -> Result<Vec<(String, Tensor)>, TchError> {
         let path = path_to_cstring(path)?;
         let mut v: Vec<(String, Tensor)> = vec![];
@@ -641,8 +620,7 @@ impl Tensor {
 
     /// Loads some named tensors from a file to a given device
     ///
-    /// The file format is the same as the one used for modules in the PyTorch C++ API.
-    /// It commonly uses the .ot extension.
+    /// The file format is the same as the one used by the PyTorch C++ API.
     pub fn load_multi_with_device<T: AsRef<Path>>(
         path: T,
         device: Device,
@@ -658,88 +636,15 @@ impl Tensor {
         Ok(v)
     }
 
-    /// Loads some named tensors from a zip file
-    ///
-    /// The expected file format is a zip archive containing a data.pkl file describing
-    /// the embedded tensors. These are commonly used with the .bin extension to export
-    /// PyTorch models and weights using the Python api.
-    pub fn loadz_multi<T: AsRef<Path>>(path: T) -> Result<Vec<(String, Tensor)>, TchError> {
-        let path = path_to_cstring(path)?;
-        let mut v: Vec<(String, Tensor)> = vec![];
-        unsafe_torch_err!(at_loadz_callback(
-            path.as_ptr(),
-            &mut v as *mut _ as *mut c_void,
-            add_callback
-        ));
-        Ok(v)
-    }
-
-    /// Loads some named tensors from a zip file to a given device
-    ///
-    /// The expected file format is a zip archive containing a data.pkl file describing
-    /// the embedded tensors. These are commonly used with the .bin extension to export
-    /// PyTorch models and weights using the Python api.
-    pub fn loadz_multi_with_device<T: AsRef<Path>>(
-        path: T,
-        device: Device,
-    ) -> Result<Vec<(String, Tensor)>, TchError> {
-        let path = path_to_cstring(path)?;
-        let mut v: Vec<(String, Tensor)> = vec![];
-        unsafe_torch_err!(at_loadz_callback_with_device(
-            path.as_ptr(),
-            &mut v as *mut _ as *mut c_void,
-            add_callback,
-            device.c_int(),
-        ));
-        Ok(v)
-    }
-
-    /// Loads some named tensors from a stream
-    ///
-    /// The file format is the same as the one used by the PyTorch C++ API.
-    pub fn load_multi_from_stream<T: Read + Seek>(
-        stream: T,
-    ) -> Result<Vec<(String, Tensor)>, TchError> {
-        let adapter = ReadSeekAdapter::new(stream);
-        let boxed_stream: Box<Box<dyn ReadStream>> = Box::new(Box::new(adapter));
-        let mut v: Vec<(String, Tensor)> = vec![];
-        unsafe_torch_err!(at_load_from_stream_callback(
-            Box::into_raw(boxed_stream) as *mut c_void,
-            &mut v as *mut _ as *mut c_void,
-            add_callback,
-            false,
-            0,
-        ));
-        Ok(v)
-    }
-
-    /// Loads some named tensors from a stream to a given device
-    ///
-    /// The file format is the same as the one used by the PyTorch C++ API.
-    pub fn load_multi_from_stream_with_device<T: Read + Seek>(
-        stream: T,
-        device: Device,
-    ) -> Result<Vec<(String, Tensor)>, TchError> {
-        let adapter = ReadSeekAdapter::new(stream);
-        let boxed_stream: Box<Box<dyn ReadStream>> = Box::new(Box::new(adapter));
-        let mut v: Vec<(String, Tensor)> = vec![];
-        unsafe_torch_err!(at_load_from_stream_callback(
-            Box::into_raw(boxed_stream) as *mut c_void,
-            &mut v as *mut _ as *mut c_void,
-            add_callback,
-            true,
-            device.c_int(),
-        ));
-        Ok(v)
-    }
-
     /// Returns a string representation for the tensor.
     ///
     /// The representation will contain all the tensor element hence may be huge for
     /// large tensors.
     pub fn to_string(&self, lw: i64) -> Result<String, TchError> {
-        let s =
-            unsafe_torch_err!(ptr_to_string(torch_sys::at_to_string(self.c_tensor, lw as c_int)));
+        let s = unsafe_torch_err!(ptr_to_string(torch_sys::at_to_string(
+            self.c_tensor,
+            lw as c_int
+        )));
         match s {
             None => Err(TchError::Kind("nullptr representation".to_string())),
             Some(s) => Ok(s),
@@ -776,7 +681,7 @@ fn autocast_is_enabled() -> bool {
 }
 
 fn autocast_set_enabled(b: bool) -> bool {
-    unsafe_torch!(at_autocast_set_enabled(i32::from(b)) != 0)
+    unsafe_torch!(at_autocast_set_enabled(if b { 1 } else { 0 }) != 0)
 }
 
 /// Runs a closure in mixed precision.
@@ -804,7 +709,7 @@ where
 }
 
 fn grad_set_enabled(b: bool) -> bool {
-    unsafe_torch!(at_grad_set_enabled(i32::from(b)) != 0)
+    unsafe_torch!(at_grad_set_enabled(if b { 1 } else { 0 }) != 0)
 }
 
 /// Runs a closure without keeping track of gradients.
@@ -837,17 +742,15 @@ pub struct NoGradGuard {
 
 /// Disables gradient tracking, this will be enabled back when the
 /// returned value gets deallocated.
-/// Note that it is important to bind this to a name like `_guard`
-/// and not to `_` as the latter would immediately drop the guard.
-/// See <https://internals.rust-lang.org/t/pre-rfc-must-bind/12658/46>
-/// for more details.
 pub fn no_grad_guard() -> NoGradGuard {
-    NoGradGuard { enabled: grad_set_enabled(false) }
+    NoGradGuard {
+        enabled: grad_set_enabled(false),
+    }
 }
 
 impl std::convert::AsRef<Tensor> for Tensor {
     fn as_ref(&self) -> &Self {
-        self
+        &self
     }
 }
 

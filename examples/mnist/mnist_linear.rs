@@ -12,11 +12,13 @@ pub fn run() -> Result<()> {
     println!("train-labels: {:?}", m.train_labels.size());
     println!("test-images: {:?}", m.test_images.size());
     println!("test-labels: {:?}", m.test_labels.size());
-    let mut ws = Tensor::zeros([IMAGE_DIM, LABELS], kind::FLOAT_CPU).set_requires_grad(true);
-    let mut bs = Tensor::zeros([LABELS], kind::FLOAT_CPU).set_requires_grad(true);
+    let mut ws = Tensor::zeros(&[IMAGE_DIM, LABELS], kind::FLOAT_CPU).set_requires_grad(true);
+    let mut bs = Tensor::zeros(&[LABELS], kind::FLOAT_CPU).set_requires_grad(true);
     for epoch in 1..200 {
         let logits = m.train_images.mm(&ws) + &bs;
-        let loss = logits.log_softmax(-1, Kind::Float).nll_loss(&m.train_labels);
+        let loss = logits
+            .log_softmax(-1, Kind::Float)
+            .nll_loss(&m.train_labels);
         ws.zero_grad();
         bs.zero_grad();
         loss.backward();

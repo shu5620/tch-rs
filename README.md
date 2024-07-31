@@ -8,9 +8,7 @@ rust bindings could then be developed on top of this. The
 [![Build Status](https://github.com/LaurentMazare/tch-rs/workflows/Continuous%20integration/badge.svg)](https://github.com/LaurentMazare/tch-rs/actions)
 [![Latest version](https://img.shields.io/crates/v/tch.svg)](https://crates.io/crates/tch)
 [![Documentation](https://docs.rs/tch/badge.svg)](https://docs.rs/tch)
-[![Dependency Status](https://deps.rs/repo/github/LaurentMazare/tch-rs/status.svg)](https://deps.rs/repo/github/LaurentMazare/tch-rs)
 ![License](https://img.shields.io/crates/l/tch.svg)
-[changelog](https://github.com/LaurentMazare/tch-rs/blob/main/CHANGELOG.md)
 
 
 The code generation part for the C api on top of libtorch comes from
@@ -18,46 +16,30 @@ The code generation part for the C api on top of libtorch comes from
 
 ## Getting Started
 
-This crate requires the C++ PyTorch library (libtorch) in version *v2.4.0* to be available on
+This crate requires the C++ PyTorch library (libtorch) in version *v1.9.0* to be available on
 your system. You can either:
 
 - Use the system-wide libtorch installation (default).
 - Install libtorch manually and let the build script know about it via the `LIBTORCH` environment variable.
-- Use a Python PyTorch install, to do this set `LIBTORCH_USE_PYTORCH=1`.
-- When a system-wide libtorch can't be found and `LIBTORCH` is not set, the
-  build script can download a pre-built binary version of libtorch by using
-  the `download-libtorch` feature. By default a CPU version is used. The
-  `TORCH_CUDA_VERSION` environment variable can be set to `cu117` in order to
-  get a pre-built binary using CUDA 11.7.
+- When a system-wide libtorch can't be found and `LIBTORCH` is not set, the build script will download a pre-built binary version
+of libtorch. By default a CPU version is used. The `TORCH_CUDA_VERSION` environment variable
+can be set to `cu111` in order to get a pre-built binary using CUDA 11.1.
 
 ### System-wide Libtorch
 
-On linux platforms, the build script will look for a system-wide libtorch
-library in `/usr/lib/libtorch.so`.
-
-### Python PyTorch Install
-
-If the `LIBTORCH_USE_PYTORCH` environment variable is set, the active python
-interpreter is called to retrieve information about the torch python package.
-This version is then linked against.
+The build script will look for a system-wide libtorch library in the following locations:
+- In Linux: `/usr/lib/libtorch.so`
 
 ### Libtorch Manual Install
 
 - Get `libtorch` from the
 [PyTorch website download section](https://pytorch.org/get-started/locally/) and extract
 the content of the zip file.
-- For Linux and macOS users, add the following to your `.bashrc` or equivalent, where `/path/to/libtorch`
+- For Linux users, add the following to your `.bashrc` or equivalent, where `/path/to/libtorch`
 is the path to the directory that was created when unzipping the file.
 ```bash
 export LIBTORCH=/path/to/libtorch
-```
-The header files location can also be specified separately from the shared library via
-the following:
-```bash
-# LIBTORCH_INCLUDE must contain `include` directory.
-export LIBTORCH_INCLUDE=/path/to/libtorch/
-# LIBTORCH_LIB must contain `lib` directory.
-export LIBTORCH_LIB=/path/to/libtorch/
+export LD_LIBRARY_PATH=${LIBTORCH}/lib:$LD_LIBRARY_PATH
 ```
 - For Windows users, assuming that `X:\path\to\libtorch` is the unzipped libtorch directory.
     - Navigate to Control Panel -> View advanced system settings -> Environment variables.
@@ -75,22 +57,6 @@ $Env:Path += ";X:\path\to\libtorch\lib"
 
 As per [the pytorch docs](https://pytorch.org/cppdocs/installing.html) the Windows debug and release builds are not ABI-compatible. This could lead to some segfaults if the incorrect version of libtorch is used.
 
-It is recommended to use the MSVC Rust toolchain (e.g. by installing `stable-x86_64-pc-windows-msvc` via rustup) rather than a MinGW based one as PyTorch has compatibilities issues with MinGW.
-
-### Static Linking
-
-When setting environment variable `LIBTORCH_STATIC=1`, `libtorch` is statically
-linked rather than using the dynamic libraries. The pre-compiled artifacts don't
-seem to include `libtorch.a` by default so this would have to be compiled
-manually, e.g. via the following:
-
-```bash
-git clone -b v2.4.0 --recurse-submodule https://github.com/pytorch/pytorch.git pytorch-static --depth 1
-cd pytorch-static
-USE_CUDA=OFF BUILD_SHARED_LIBS=OFF python setup.py build
-# export LIBTORCH to point at the build directory in pytorch-static.
-```
-
 ## Examples
 
 ### Basic Tensor Operations
@@ -99,10 +65,11 @@ This crate provides a tensor type which wraps PyTorch tensors. Here is a minimal
 example of how to perform some tensor operations.
 
 ```rust
+extern crate tch;
 use tch::Tensor;
 
 fn main() {
-    let t = Tensor::from_slice(&[3, 1, 4, 1, 5]);
+    let t = Tensor::of_slice(&[3, 1, 4, 1, 5]);
     let t = t * 2;
     t.print();
 }
@@ -128,6 +95,7 @@ Then on each step of the training loop:
 
 
 ```rust
+extern crate tch;
 use tch::nn::{Module, OptimizerConfig};
 use tch::{kind, nn, Device, Tensor};
 
@@ -145,7 +113,7 @@ fn gradient_descent() {
         // Dummy mini-batches made of zeros.
         let xs = Tensor::zeros(&[7], kind::FLOAT_CPU);
         let ys = Tensor::zeros(&[7], kind::FLOAT_CPU);
-        let loss = (my_module.forward(&xs) - ys).pow_tensor_scalar(2).sum(kind::Kind::Float);
+        let loss = (my_module.forward(&xs) - ys).pow(2).sum(kind::Kind::Float);
         opt.backward_step(&loss);
     }
 }
@@ -157,6 +125,8 @@ The `nn` api can be used to create neural network architectures, e.g. the follow
 a simple model with one hidden layer and trains it on the MNIST dataset using the Adam optimizer.
 
 ```rust
+extern crate anyhow;
+extern crate tch;
 use anyhow::Result;
 use tch::{nn, nn::Module, nn::OptimizerConfig, Device};
 
@@ -208,8 +178,8 @@ More details on the training loop can be found in the
 The [pretrained-models  example](https://github.com/LaurentMazare/tch-rs/tree/master/examples/pretrained-models/main.rs)
 illustrates how to use some pre-trained computer vision model on an image.
 The weights - which have been extracted from the PyTorch implementation - can be
-downloaded here [resnet18.ot](https://github.com/LaurentMazare/tch-rs/releases/download/mw/resnet18.ot)
-and here [resnet34.ot](https://github.com/LaurentMazare/tch-rs/releases/download/mw/resnet34.ot).
+downloaded here [resnet18.ot](https://github.com/LaurentMazare/ocaml-torch/releases/download/v0.1-unstable/resnet18.ot)
+and here [resnet34.ot](https://github.com/LaurentMazare/ocaml-torch/releases/download/v0.1-unstable/resnet34.ot).
 
 The example can then be run via the following command:
 ```bash
@@ -239,70 +209,7 @@ This should print the top 5 imagenet categories for the image. The code for this
         println!("{:50} {:5.2}%", class, 100.0 * probability)
     }
 ```
-### Importing Pre-Trained Weights from PyTorch Using SafeTensors
 
-`safetensors` is a new simple format by HuggingFace for storing tensors. It does not rely on Python's `pickle` module, and therefore the tensors are not bound to the specific classes and the exact directory structure used when the model is saved. It is also zero-copy, which means that reading the file will require no more memory than the original file.
-
-For more information on `safetensors`, please check out https://github.com/huggingface/safetensors
-
-#### Installing `safetensors`
-
-You can install `safetensors` via the pip manager:
-
-```
-pip install safetensors
-```
-
-#### Exporting weights in PyTorch
-
-```python
-import torchvision
-from safetensors import torch as stt
-
-model = torchvision.models.resnet18(pretrained=True)
-stt.save_file(model.state_dict(), 'resnet18.safetensors')
-```
-
-*Note: the filename of the export must be named with  a `.safetensors` suffix for it to be properly decoded by `tch`.*
-
-#### Importing weights in `tch`
-
-```rust
-use anyhow::Result;
-use tch::{
-	Device,
-	Kind,
-	nn::VarStore,
-	vision::{
-		imagenet,
-		resnet::resnet18,
-	}
-};
-
-fn main() -> Result<()> {
-	// Create the model and load the pre-trained weights
-	let mut vs = VarStore::new(Device::cuda_if_available());
-	let model = resnet18(&vs.root(), 1000);
-	vs.load("resnet18.safetensors")?;
-	
-	// Load the image file and resize it to the usual imagenet dimension of 224x224.
-	let image = imagenet::load_image_and_resize224("dog.jpg")?
-		.to_device(vs.device());
-
-	// Apply the forward pass of the model to get the logits
-	let output = image
-		.unsqueeze(0)
-		.apply_t(&model, false)
-		.softmax(-1, Kind::Float);
-	
-	// Print the top 5 categories for this image.
-    for (probability, class) in imagenet::top(&output, 5).iter() {
-        println!("{:50} {:5.2}%", class, 100.0 * probability)
-    }
-    
-    Ok(())
-}
-```
 
 Further examples include:
 * A simplified version of
@@ -310,7 +217,7 @@ Further examples include:
   illustrating character level language modeling using Recurrent Neural Networks.
 * [Neural style transfer](https://github.com/LaurentMazare/tch-rs/blob/master/examples/neural-style-transfer)
   uses a pre-trained VGG-16 model to compose an image in the style of another image (pre-trained weights:
-  [vgg16.ot](https://github.com/LaurentMazare/tch-rs/releases/download/mw/vgg16.ot)).
+  [vgg16.ot](https://github.com/LaurentMazare/ocaml-torch/releases/download/v0.1-unstable/vgg16.ot)).
 * Some [ResNet examples on CIFAR-10](https://github.com/LaurentMazare/tch-rs/tree/master/examples/cifar).
 * A [tutorial](https://github.com/LaurentMazare/tch-rs/tree/master/examples/jit)
   showing how to deploy/run some Python trained models using
@@ -320,49 +227,9 @@ Further examples include:
   example as well as an A2C implementation that can run on Atari games.
 * A [Transfer Learning Tutorial](https://github.com/LaurentMazare/tch-rs/blob/master/examples/transfer-learning)
   shows how to finetune a pre-trained ResNet model on a very small dataset.
-* A [simplified version of GPT](https://github.com/LaurentMazare/tch-rs/blob/master/examples/min-gpt)
-  similar to minGPT.
-* A [Stable Diffusion](https://github.com/LaurentMazare/diffusers-rs)
-  implementation following the lines of hugginface's diffusers library.
 
 External material:
 * A [tutorial](http://vegapit.com/article/how-to-use-torch-in-rust-with-tch-rs) showing how to use Torch to compute option prices and greeks.
-* [tchrs-opencv-webcam-inference](https://github.com/metobom/tchrs-opencv-webcam-inference) uses `tch-rs` and `opencv` to run inference
-  on a webcam feed for some Python trained model based on mobilenet v3.
-
-## FAQ
-
-### What are the best practices for Python to Rust model translations?
-
-See some details in [this thread](https://github.com/LaurentMazare/tch-rs/issues/549#issuecomment-1296840898).
-
-### How to get this to work on a M1/M2 mac?
-
-Check this [issue](https://github.com/LaurentMazare/tch-rs/issues/488).
-
-### Compilation is slow, torch-sys seems to be rebuilt every time cargo gets run.
-See this [issue](https://github.com/LaurentMazare/tch-rs/issues/596), this could
-be caused by rust-analyzer not knowing about the proper environment variables
-like `LIBTORCH` and `LD_LIBRARY_PATH`.
-
-### Using Rust/tch code from Python.
-It is possible to call Rust/tch code from Python via PyO3,
-[tch-ext](https://github.com/LaurentMazare/tch-ext) provides an example of such
-a Python extension.
-
-### Error loading shared libraries. 
-
-If you get an error about not finding some shared libraries when running the generated binaries
-(e.g. 
-` error while loading shared libraries: libtorch_cpu.so: cannot open shared object file: No such file or directory`).
-You can try adding the following to your `.bashrc` where `/path/to/libtorch` is the path to your
-libtorch install.
-```
-# For Linux
-export LD_LIBRARY_PATH=/path/to/libtorch/lib:$LD_LIBRARY_PATH
-# For macOS
-export DYLD_LIBRARY_PATH=/path/to/libtorch/lib:$DYLD_LIBRARY_PATH
-```
 
 ## License
 `tch-rs` is distributed under the terms of both the MIT license

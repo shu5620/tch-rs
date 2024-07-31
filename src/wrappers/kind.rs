@@ -1,6 +1,6 @@
 //! The different kind of elements supported in Torch.
 
-use half;
+use half::f16;
 
 /// The different kind of elements that a Tensor can hold.
 #[allow(clippy::upper_case_acronyms)]
@@ -47,7 +47,7 @@ impl Kind {
         }
     }
 
-    pub(super) fn from_c_int(v: libc::c_int) -> Result<Kind, crate::TchError> {
+    pub(super) fn of_c_int(v: libc::c_int) -> Result<Kind, crate::TchError> {
         match v {
             0 => Ok(Kind::Uint8),
             1 => Ok(Kind::Int8),
@@ -99,61 +99,52 @@ pub const FLOAT_CUDA: (Kind, crate::Device) = (Kind::Float, crate::Device::Cuda(
 pub const DOUBLE_CUDA: (Kind, crate::Device) = (Kind::Double, crate::Device::Cuda(0));
 pub const INT64_CUDA: (Kind, crate::Device) = (Kind::Int64, crate::Device::Cuda(0));
 
-/// Kinds for tensor elements
-///
-/// # Safety
-/// The specified Kind must be for a type that has the same length as Self.
-pub unsafe trait Element: Clone {
+pub trait Element: Clone {
     const KIND: Kind;
     const ZERO: Self;
 }
 
-unsafe impl Element for u8 {
+impl Element for u8 {
     const KIND: Kind = Kind::Uint8;
     const ZERO: Self = 0;
 }
 
-unsafe impl Element for i8 {
+impl Element for i8 {
     const KIND: Kind = Kind::Int8;
     const ZERO: Self = 0;
 }
 
-unsafe impl Element for i16 {
+impl Element for i16 {
     const KIND: Kind = Kind::Int16;
     const ZERO: Self = 0;
 }
 
-unsafe impl Element for i32 {
+impl Element for i32 {
     const KIND: Kind = Kind::Int;
     const ZERO: Self = 0;
 }
 
-unsafe impl Element for i64 {
+impl Element for i64 {
     const KIND: Kind = Kind::Int64;
     const ZERO: Self = 0;
 }
 
-unsafe impl Element for half::f16 {
+impl Element for f16 {
     const KIND: Kind = Kind::Half;
     const ZERO: Self = half::f16::ZERO;
 }
 
-unsafe impl Element for half::bf16 {
-    const KIND: Kind = Kind::Half;
-    const ZERO: Self = half::bf16::ZERO;
-}
-
-unsafe impl Element for f32 {
+impl Element for f32 {
     const KIND: Kind = Kind::Float;
     const ZERO: Self = 0.;
 }
 
-unsafe impl Element for f64 {
+impl Element for f64 {
     const KIND: Kind = Kind::Double;
     const ZERO: Self = 0.;
 }
 
-unsafe impl Element for bool {
+impl Element for bool {
     const KIND: Kind = Kind::Bool;
     const ZERO: Self = false;
 }

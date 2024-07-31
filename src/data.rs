@@ -1,6 +1,8 @@
 //! Dataset iterators.
-use crate::{kind, kind::Kind, Device, IndexOp, TchError, Tensor};
+use crate::{kind, Device, IndexOp, TchError, Tensor};
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::{BufReader, Read};
 
 /// An iterator over a pair of tensors which have the same first dimension
 /// size.
@@ -36,7 +38,8 @@ impl Iter2 {
         let total_size = xs.size()[0];
         if ys.size()[0] != total_size {
             return Err(TchError::Shape(format!(
-                "different dimension for the two inputs {xs:?} {ys:?}"
+                "different dimension for the two inputs {:?} {:?}",
+                xs, ys
             )));
         }
         Ok(Iter2 {
@@ -71,7 +74,7 @@ impl Iter2 {
     /// The iterator would still run over the whole dataset but the order in
     /// which elements are grouped in mini-batches is randomized.
     pub fn shuffle(&mut self) -> &mut Iter2 {
-        let index = Tensor::randperm(self.total_size, (Kind::Int64, self.device));
+        let index = Tensor::randperm(self.total_size, kind::INT64_CPU);
         self.xs = self.xs.index_select(0, &index);
         self.ys = self.ys.index_select(0, &index);
         self
@@ -131,9 +134,9 @@ pub struct TextDataIter {
 impl TextData {
     /// Creates a text dataset from a file.
     pub fn new<P: AsRef<std::path::Path>>(filename: P) -> Result<TextData, TchError> {
-        let mut buffer = std::fs::read(&filename).map_err(|err| {
-            std::io::Error::new(err.kind(), format!("{:?} {err}", filename.as_ref()))
-        })?;
+        let mut buf_reader = BufReader::new(File::open(filename)?);
+        let mut buffer = Vec::new();
+        buf_reader.read_to_end(&mut buffer)?;
 
         let mut label_for_char = HashMap::<u8, u8>::new();
         let mut char_for_label = Vec::<char>::new();
@@ -145,7 +148,11 @@ impl TextData {
             })
         }
 
-        Ok(TextData { data: Tensor::from_slice(&buffer), char_for_label, label_for_char })
+        Ok(TextData {
+            data: Tensor::of_slice(&buffer),
+            char_for_label,
+            label_for_char,
+        })
     }
 
     /// Returns the number of different characters/labels used by the dataset.
@@ -164,7 +171,7 @@ impl TextData {
 
     pub fn char_to_label(&self, c: char) -> Result<u8, TchError> {
         match self.label_for_char.get(&(c as u8)) {
-            None => Err(TchError::Convert(format!("cannot find char {c}"))),
+            None => Err(TchError::Convert(format!("cannot find char {}", c))),
             Some(v) => Ok(*v),
         }
     }
@@ -194,8 +201,11 @@ impl Iterator for TextDataIter {
             None
         } else {
             self.batch_index += 1;
-            let indexes = Vec::<i64>::try_from(&self.indexes.i(start..start + size)).unwrap();
-            let batch: Vec<_> = indexes.iter().map(|&i| self.data.i(i..i + self.seq_len)).collect();
+            let indexes = Vec::<i64>::from(&self.indexes.i(start..start + size));
+            let batch: Vec<_> = indexes
+                .iter()
+                .map(|&i| self.data.i(i..i + self.seq_len))
+                .collect();
             let batch: Vec<_> = batch.iter().collect();
             Some(Tensor::stack(&batch, 0))
         }

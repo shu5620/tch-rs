@@ -14,7 +14,12 @@ pub struct Step<A> {
 impl<A: Copy> Step<A> {
     /// Returns a copy of this step changing the observation tensor.
     pub fn copy_with_obs(&self, obs: &Tensor) -> Step<A> {
-        Step { obs: obs.copy(), action: self.action, reward: self.reward, is_done: self.is_done }
+        Step {
+            obs: obs.copy(),
+            action: self.action,
+            reward: self.reward,
+            is_done: self.is_done,
+        }
     }
 }
 
@@ -42,7 +47,11 @@ impl GymEnv {
         };
         let observation_space = env.getattr(py, "observation_space")?;
         let observation_space = observation_space.getattr(py, "shape")?.extract(py)?;
-        Ok(GymEnv { env, action_space, observation_space })
+        Ok(GymEnv {
+            env,
+            action_space,
+            observation_space,
+        })
     }
 
     /// Resets the environment, returning the observation tensor.
@@ -50,7 +59,7 @@ impl GymEnv {
         let gil = Python::acquire_gil();
         let py = gil.python();
         let obs = self.env.call_method(py, "reset", NoArgs, None)?;
-        Ok(Tensor::from_slice(&obs.extract::<Vec<f32>>(py)?))
+        Ok(Tensor::of_slice(&obs.extract::<Vec<f32>>(py)?))
     }
 
     /// Applies an environment step using the specified action.
@@ -59,7 +68,7 @@ impl GymEnv {
         let py = gil.python();
         let step = self.env.call_method(py, "step", (action,), None)?;
         Ok(Step {
-            obs: Tensor::from_slice(&step.get_item(py, 0)?.extract::<Vec<f32>>(py)?),
+            obs: Tensor::of_slice(&step.get_item(py, 0)?.extract::<Vec<f32>>(py)?),
             reward: step.get_item(py, 1)?.extract(py)?,
             is_done: step.get_item(py, 2)?.extract(py)?,
             action,

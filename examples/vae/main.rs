@@ -10,10 +10,11 @@
      t10k-labels-idx1-ubyte.gz
 */
 
+extern crate tch;
 use anyhow::Result;
 use tch::{nn, nn::Module, nn::OptimizerConfig, Kind, Reduction, Tensor};
 
-struct Vae {
+struct VAE {
     fc1: nn::Linear,
     fc21: nn::Linear,
     fc22: nn::Linear,
@@ -21,9 +22,9 @@ struct Vae {
     fc4: nn::Linear,
 }
 
-impl Vae {
+impl VAE {
     fn new(vs: &nn::Path) -> Self {
-        Vae {
+        VAE {
             fc1: nn::linear(vs / "fc1", 784, 400, Default::default()),
             fc21: nn::linear(vs / "fc21", 400, 20, Default::default()),
             fc22: nn::linear(vs / "fc22", 400, 20, Default::default()),
@@ -56,7 +57,7 @@ fn loss(recon_x: &Tensor, x: &Tensor, mu: &Tensor, logvar: &Tensor) -> Tensor {
     //     Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
     // https://arxiv.org/abs/1312.6114
     // 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-    let kld = -0.5 * (1i64 + logvar - mu.pow_tensor_scalar(2) - logvar.exp()).sum(Kind::Float);
+    let kld = -0.5 * (1i64 + logvar - mu.pow(2) - logvar.exp()).sum(Kind::Float);
     bce + kld
 }
 
@@ -65,7 +66,12 @@ fn image_matrix(imgs: &Tensor, sz: i64) -> Result<Tensor> {
     let imgs = (imgs * 256.).clamp(0., 255.).to_kind(Kind::Uint8);
     let mut ys: Vec<Tensor> = vec![];
     for i in 0..sz {
-        ys.push(Tensor::cat(&(0..sz).map(|j| imgs.narrow(0, 4 * i + j, 1)).collect::<Vec<_>>(), 2))
+        ys.push(Tensor::cat(
+            &(0..sz)
+                .map(|j| imgs.narrow(0, 4 * i + j, 1))
+                .collect::<Vec<_>>(),
+            2,
+        ))
     }
     Ok(Tensor::cat(&ys, 3).squeeze_dim(0))
 }
@@ -74,7 +80,7 @@ pub fn main() -> Result<()> {
     let device = tch::Device::cuda_if_available();
     let m = tch::vision::mnist::load_dir("data")?;
     let vs = nn::VarStore::new(device);
-    let vae = Vae::new(&vs.root());
+    let vae = VAE::new(&vs.root());
     let mut opt = nn::Adam::default().build(&vs, 1e-3)?;
     for epoch in 1..21 {
         let mut train_loss = 0f64;
@@ -83,13 +89,13 @@ pub fn main() -> Result<()> {
             let (recon_batch, mu, logvar) = vae.forward(&bimages);
             let loss = loss(&recon_batch, &bimages, &mu, &logvar);
             opt.backward_step(&loss);
-            train_loss += f64::try_from(&loss)?;
+            train_loss += f64::from(&loss);
             samples += bimages.size()[0] as f64;
         }
         println!("Epoch: {}, loss: {}", epoch, train_loss / samples);
-        let s = Tensor::randn([64, 20], tch::kind::FLOAT_CPU).to(device);
+        let s = Tensor::randn(&[64, 20], tch::kind::FLOAT_CPU).to(device);
         let s = vae.decode(&s).to(tch::Device::Cpu).view([64, 1, 28, 28]);
-        tch::vision::image::save(&image_matrix(&s, 8)?, format!("s_{epoch}.png"))?
+        tch::vision::image::save(&image_matrix(&s, 8)?, format!("s_{}.png", epoch))?
     }
     Ok(())
 }

@@ -4,6 +4,7 @@
    This is mostly a rust port of https://github.com/karpathy/minGPT
 */
 
+extern crate tch;
 use anyhow::{bail, Result};
 use tch::data::TextData;
 use tch::nn::{ModuleT, OptimizerConfig};
@@ -69,7 +70,7 @@ fn causal_self_attention(p: &nn::Path, cfg: Config) -> impl ModuleT {
     let value = linear(p / "value", cfg.n_embd, cfg.n_embd);
     let proj = linear(p / "proj", cfg.n_embd, cfg.n_embd);
     let mask_init =
-        Tensor::ones([cfg.block_size, cfg.block_size], (Kind::Float, p.device())).tril(0);
+        Tensor::ones(&[cfg.block_size, cfg.block_size], (Kind::Float, p.device())).tril(0);
     let mask_init = mask_init.view([1, 1, cfg.block_size, cfg.block_size]);
     // let mask = p.var_copy("mask", &mask_init);
     let mask = mask_init;
@@ -80,9 +81,16 @@ fn causal_self_attention(p: &nn::Path, cfg: Config) -> impl ModuleT {
         let q = xs.apply(&query).view(sizes).transpose(1, 2);
         let v = xs.apply(&value).view(sizes).transpose(1, 2);
         let att = q.matmul(&k.transpose(-2, -1)) * (1.0 / f64::sqrt(sizes[3] as f64));
-        let att = att.masked_fill(&mask.i((.., .., ..sz_t, ..sz_t)).eq(0.), f64::NEG_INFINITY);
+        let att = att.masked_fill(
+            &mask.i((.., .., ..sz_t, ..sz_t)).eq(0.),
+            std::f64::NEG_INFINITY,
+        );
         let att = att.softmax(-1, Kind::Float).dropout(cfg.attn_pdrop, train);
-        let ys = att.matmul(&v).transpose(1, 2).contiguous().view([sz_b, sz_t, sz_c]);
+        let ys = att
+            .matmul(&v)
+            .transpose(1, 2)
+            .contiguous()
+            .view([sz_b, sz_t, sz_c]);
         ys.apply(&proj).dropout(cfg.resid_pdrop, train)
     })
 }
@@ -95,15 +103,24 @@ fn block(p: &nn::Path, cfg: Config) -> impl ModuleT {
     let lin2 = linear(p / "lin2", 4 * cfg.n_embd, cfg.n_embd);
     nn::func_t(move |xs, train| {
         let xs = xs + xs.apply(&ln1).apply_t(&attn, train);
-        let ys =
-            xs.apply(&ln2).apply(&lin1).gelu("none").apply(&lin2).dropout(cfg.resid_pdrop, train);
+        let ys = xs
+            .apply(&ln2)
+            .apply(&lin1)
+            .gelu()
+            .apply(&lin2)
+            .dropout(cfg.resid_pdrop, train);
         xs + ys
     })
 }
 
-fn gpt(p: nn::Path, cfg: Config) -> impl ModuleT {
+fn gpt(p: &nn::Path, cfg: Config) -> impl ModuleT {
     let p = &p.set_group(NO_WEIGHT_DECAY_GROUP);
-    let tok_emb = nn::embedding(p / "tok_emb", cfg.vocab_size, cfg.n_embd, Default::default());
+    let tok_emb = nn::embedding(
+        p / "tok_emb",
+        cfg.vocab_size,
+        cfg.n_embd,
+        Default::default(),
+    );
     let pos_emb = p.zeros("pos_emb", &[1, cfg.block_size, cfg.n_embd]);
     let ln_f = nn::layer_norm(p / "ln_f", vec![cfg.n_embd], Default::default());
     let head = linear_no_bias(p / "head", cfg.n_embd, cfg.vocab_size);
@@ -130,7 +147,7 @@ fn sample(data: &TextData, gpt: &impl ModuleT, input: Tensor) -> String {
     for _index in 0..SAMPLING_LEN {
         let logits = input.apply_t(gpt, false).i((0, -1, ..));
         let sampled_y = logits.softmax(-1, Kind::Float).multinomial(1, true);
-        let last_label = i64::try_from(&sampled_y).unwrap();
+        let last_label = i64::from(&sampled_y);
         result.push(data.label_to_char(last_label));
         input = Tensor::cat(&[input, sampled_y.view([1, 1])], 1).narrow(1, 1, BLOCK_SIZE);
     }
@@ -142,7 +159,7 @@ pub fn main() -> Result<()> {
     let mut vs = nn::VarStore::new(device);
     let data = TextData::new("data/input.txt")?;
     let labels = data.labels();
-    println!("Dataset loaded, {labels} labels.");
+    println!("Dataset loaded, {} labels.", labels);
     let cfg = Config {
         vocab_size: labels,
         n_embd: 512,
@@ -153,7 +170,7 @@ pub fn main() -> Result<()> {
         resid_pdrop: 0.1,
         embd_pdrop: 0.1,
     };
-    let gpt = gpt(vs.root() / "gpt", cfg);
+    let gpt = gpt(&(&vs.root() / "gpt"), cfg);
     let args: Vec<_> = std::env::args().collect();
     if args.len() < 2 {
         bail!("usage: main (train|predict weights.ot seqstart)")
@@ -168,22 +185,28 @@ pub fn main() -> Result<()> {
                 let mut sum_loss = 0.;
                 let mut cnt_loss = 0.;
                 for batch in data.iter_shuffle(BLOCK_SIZE + 1, BATCH_SIZE) {
-                    let xs = batch.narrow(1, 0, BLOCK_SIZE).to_kind(Kind::Int64).to_device(device);
-                    let ys = batch.narrow(1, 1, BLOCK_SIZE).to_kind(Kind::Int64).to_device(device);
+                    let xs = batch
+                        .narrow(1, 0, BLOCK_SIZE)
+                        .to_kind(Kind::Int64)
+                        .to_device(device);
+                    let ys = batch
+                        .narrow(1, 1, BLOCK_SIZE)
+                        .to_kind(Kind::Int64)
+                        .to_device(device);
                     let logits = xs.apply_t(&gpt, true);
                     let loss = logits
                         .view([BATCH_SIZE * BLOCK_SIZE, labels])
                         .cross_entropy_for_logits(&ys.view([BATCH_SIZE * BLOCK_SIZE]));
                     opt.backward_step_clip(&loss, 0.5);
-                    sum_loss += f64::try_from(loss)?;
+                    sum_loss += f64::from(loss);
                     cnt_loss += 1.0;
                     idx += 1;
                     if idx % 10000 == 0 {
                         println!("Epoch: {}   loss: {:5.3}", epoch, sum_loss / cnt_loss);
-                        let input = Tensor::zeros([1, BLOCK_SIZE], (Kind::Int64, device));
+                        let input = Tensor::zeros(&[1, BLOCK_SIZE], (Kind::Int64, device));
                         println!("Sample: {}", sample(&data, &gpt, input));
-                        if let Err(err) = vs.save(format!("gpt{idx}.ot")) {
-                            println!("error while saving {err}");
+                        if let Err(err) = vs.save(format!("gpt{}.ot", idx)) {
+                            println!("error while saving {}", err);
                         }
                         sum_loss = 0.;
                         cnt_loss = 0.;
@@ -194,14 +217,15 @@ pub fn main() -> Result<()> {
         "predict" => {
             vs.load(args[2].as_str())?;
             let seqstart = args[3].as_str();
-            let input = Tensor::zeros([1, BLOCK_SIZE], (Kind::Int64, device));
+            let input = Tensor::zeros(&[1, BLOCK_SIZE], (Kind::Int64, device));
             for (idx, c) in seqstart.chars().rev().enumerate() {
                 let idx = idx as i64;
                 if idx >= BLOCK_SIZE {
                     break;
                 }
-                let _filled =
-                    input.i((0, BLOCK_SIZE - 1 - idx)).fill_(data.char_to_label(c)? as i64);
+                let _filled = input
+                    .i((0, BLOCK_SIZE - 1 - idx))
+                    .fill_(data.char_to_label(c)? as i64);
             }
             println!("Sample: {}", sample(&data, &gpt, input));
         }

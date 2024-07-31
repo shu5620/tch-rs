@@ -31,7 +31,10 @@ impl Module for Sequential {
             xs.shallow_clone()
         } else {
             let xs = self.layers[0].forward(xs);
-            self.layers.iter().skip(1).fold(xs, |xs, layer| layer.forward(&xs))
+            self.layers
+                .iter()
+                .skip(1)
+                .fold(xs, |xs, layer| layer.forward(&xs))
         }
     }
 }
@@ -57,7 +60,7 @@ impl Sequential {
         if self.layers.is_empty() {
             vec![xs.shallow_clone()]
         } else {
-            let n = n.unwrap_or(self.layers.len());
+            let n = n.unwrap_or_else(|| self.layers.len());
             let xs = self.layers[0].forward(xs);
             let mut vec = vec![];
             let out = self.layers.iter().take(n).skip(1).fold(xs, |xs, layer| {
@@ -100,7 +103,10 @@ impl ModuleT for SequentialT {
             xs.shallow_clone()
         } else {
             let xs = self.layers[0].forward_t(xs, train);
-            self.layers.iter().skip(1).fold(xs, |xs, layer| layer.forward_t(&xs, train))
+            self.layers
+                .iter()
+                .skip(1)
+                .fold(xs, |xs, layer| layer.forward_t(&xs, train))
         }
     }
 }
@@ -134,7 +140,7 @@ impl SequentialT {
         if self.layers.is_empty() {
             vec![xs.shallow_clone()]
         } else {
-            let n = n.unwrap_or(self.layers.len());
+            let n = n.unwrap_or_else(|| self.layers.len());
             let xs = self.layers[0].forward_t(xs, train);
             let mut vec = vec![];
             let out = self.layers.iter().take(n).skip(1).fold(xs, |xs, layer| {

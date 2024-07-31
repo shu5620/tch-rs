@@ -1,6 +1,7 @@
 // This example is useful to check for memory leaks.
 // A large number of tensors are created either on the cpu or on the gpu and one
 // can monitor the main memory usage or the gpu memory at the same time.
+extern crate tch;
 use tch::Tensor;
 
 fn main() {
@@ -13,7 +14,7 @@ fn main() {
     };
     let slice = vec![0; 1_000_000];
     for i in 1..1_000_000 {
-        let t = Tensor::from_slice(&slice).to_device(device);
+        let t = Tensor::of_slice(&slice).to_device(device);
         println!("{} {:?}", i, t.size())
     }
 }

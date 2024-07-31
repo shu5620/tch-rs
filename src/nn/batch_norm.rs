@@ -8,7 +8,6 @@ pub struct BatchNormConfig {
     pub cudnn_enabled: bool,
     pub eps: f64,
     pub momentum: f64,
-    pub affine: bool,
     pub ws_init: super::Init,
     pub bs_init: super::Init,
 }
@@ -19,7 +18,6 @@ impl Default for BatchNormConfig {
             cudnn_enabled: true,
             eps: 1e-5,
             momentum: 0.1,
-            affine: true,
             ws_init: super::Init::Uniform { lo: 0., up: 1. },
             bs_init: super::Init::Const(0.),
         }
@@ -32,8 +30,8 @@ pub struct BatchNorm {
     config: BatchNormConfig,
     pub running_mean: Tensor,
     pub running_var: Tensor,
-    pub ws: Option<Tensor>,
-    pub bs: Option<Tensor>,
+    pub ws: Tensor,
+    pub bs: Tensor,
     pub nd: usize,
 }
 
@@ -44,19 +42,12 @@ fn batch_norm<'a, T: Borrow<super::Path<'a>>>(
     config: BatchNormConfig,
 ) -> BatchNorm {
     let vs = vs.borrow();
-    let (ws, bs) = if config.affine {
-        let ws = vs.var("weight", &[out_dim], config.ws_init);
-        let bs = vs.var("bias", &[out_dim], config.bs_init);
-        (Some(ws), Some(bs))
-    } else {
-        (None, None)
-    };
     BatchNorm {
         config,
         running_mean: vs.zeros_no_train("running_mean", &[out_dim]),
         running_var: vs.ones_no_train("running_var", &[out_dim]),
-        ws,
-        bs,
+        ws: vs.var("weight", &[out_dim], config.ws_init),
+        bs: vs.var("bias", &[out_dim], config.bs_init),
         nd,
     }
 }
@@ -102,25 +93,21 @@ impl super::module::ModuleT for BatchNorm {
         let dim = xs.dim();
         if self.nd == 1 && dim != 2 && dim != 3 {
             panic!(
-                "as nd={}, expected an input tensor with 2 or 3 dims, got {} ({:?})",
-                self.nd,
-                dim,
+                "expected an input tensor with 2 or 3 dims, got {:?}",
                 xs.size()
             )
         }
         if self.nd > 1 && xs.dim() != self.nd + 2 {
             panic!(
-                "as nd={}, expected an input tensor with {} dims, got {} ({:?})",
-                self.nd,
+                "expected an input tensor with {} dims, got {:?}",
                 self.nd + 2,
-                dim,
                 xs.size()
             )
         };
         Tensor::batch_norm(
             xs,
-            self.ws.as_ref(),
-            self.bs.as_ref(),
+            Some(&self.ws),
+            Some(&self.bs),
             Some(&self.running_mean),
             Some(&self.running_var),
             train,

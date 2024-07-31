@@ -1,7 +1,8 @@
 // This is inspired by the Neural Style tutorial from PyTorch.org
 //   https://pytorch.org/tutorials/advanced/neural_style_tutorial.html
 // The pre-trained weights for the VGG16 model can be downloaded from:
-//   https://github.com/LaurentMazare/tch-rs/releases/download/mw/vgg16.ot
+//   https://github.com/LaurentMazare/ocaml-torch/releases/download/v0.1-unstable/vgg16.ot
+extern crate tch;
 use anyhow::{bail, Result};
 use tch::vision::{imagenet, vgg};
 use tch::{nn, nn::OptimizerConfig, Device, Tensor};
@@ -33,15 +34,17 @@ pub fn main() -> Result<()> {
 
     let mut net_vs = tch::nn::VarStore::new(device);
     let net = vgg::vgg16(&net_vs.root(), imagenet::CLASS_COUNT);
-    net_vs.load(&weights).unwrap_or_else(|_| panic!("Could not load weights file {}", &weights));
+    net_vs
+        .load(&weights)
+        .expect(&format!("Could not load weights file {}", &weights));
     net_vs.freeze();
 
     let style_img = imagenet::load_image(&style_img)
-        .unwrap_or_else(|_| panic!("Could not load the style file {}", &style_img))
+        .expect(&format!("Could not load the style file {}", &style_img))
         .unsqueeze(0)
         .to_device(device);
     let content_img = imagenet::load_image(&content_img)
-        .unwrap_or_else(|_| panic!("Could not load the content file {}", &content_img))
+        .expect(&format!("Could not load the content file {}", &content_img))
         .unsqueeze(0)
         .to_device(device);
     let max_layer = STYLE_INDEXES.iter().max().unwrap() + 1;
@@ -54,8 +57,10 @@ pub fn main() -> Result<()> {
 
     for step_idx in 1..(1 + TOTAL_STEPS) {
         let input_layers = net.forward_all_t(&input_var, false, Some(max_layer));
-        let style_loss: Tensor =
-            STYLE_INDEXES.iter().map(|&i| style_loss(&input_layers[i], &style_layers[i])).sum();
+        let style_loss: Tensor = STYLE_INDEXES
+            .iter()
+            .map(|&i| style_loss(&input_layers[i], &style_layers[i]))
+            .sum();
         let content_loss: Tensor = CONTENT_INDEXES
             .iter()
             .map(|&i| input_layers[i].mse_loss(&content_layers[i], tch::Reduction::Mean))
@@ -63,8 +68,8 @@ pub fn main() -> Result<()> {
         let loss = style_loss * STYLE_WEIGHT + content_loss;
         opt.backward_step(&loss);
         if step_idx % 1000 == 0 {
-            println!("{} {}", step_idx, f64::try_from(loss)?);
-            imagenet::save_image(&input_var, format!("out{step_idx}.jpg"))?;
+            println!("{} {}", step_idx, f64::from(loss));
+            imagenet::save_image(&input_var, &format!("out{}.jpg", step_idx))?;
         }
     }
 

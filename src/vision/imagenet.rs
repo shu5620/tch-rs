@@ -7,21 +7,25 @@ use std::sync::Mutex;
 
 lazy_static! {
     static ref IMAGENET_MEAN: Mutex<Tensor> =
-        Mutex::new(Tensor::from_slice(&[0.485f32, 0.456, 0.406]).view((3, 1, 1)));
+        Mutex::new(Tensor::of_slice(&[0.485f32, 0.456, 0.406]).view((3, 1, 1)));
     static ref IMAGENET_STD: Mutex<Tensor> =
-        Mutex::new(Tensor::from_slice(&[0.229f32, 0.224, 0.225]).view((3, 1, 1)));
+        Mutex::new(Tensor::of_slice(&[0.229f32, 0.224, 0.225]).view((3, 1, 1)));
 }
 
 pub fn normalize(tensor: &Tensor) -> Result<Tensor, TchError> {
     let mean = IMAGENET_MEAN.lock().unwrap();
     let std = IMAGENET_STD.lock().unwrap();
-    (tensor.to_kind(Kind::Float) / 255.0).f_sub(&mean)?.f_div(&std)
+    (tensor.to_kind(Kind::Float) / 255.0)
+        .f_sub(&mean)?
+        .f_div(&std)
 }
 
 pub fn unnormalize(tensor: &Tensor) -> Result<Tensor, TchError> {
     let mean = IMAGENET_MEAN.lock().unwrap();
     let std = IMAGENET_STD.lock().unwrap();
-    let tensor = (tensor.f_mul(&std)?.f_add(&mean)? * 255.0).clamp(0., 255.0).to_kind(Kind::Uint8);
+    let tensor = (tensor.f_mul(&std)?.f_add(&mean)? * 255.0)
+        .clamp(0., 255.0)
+        .to_kind(Kind::Uint8);
     Ok(tensor)
 }
 
@@ -36,37 +40,16 @@ pub fn load_image<T: AsRef<Path>>(path: T) -> Result<Tensor, TchError> {
     normalize(&super::image::load(path)?)
 }
 
-/// Loads an image from memory and applies the ImageNet normalization.
-pub fn load_image_from_memory(img_data: &[u8]) -> Result<Tensor, TchError> {
-    normalize(&super::image::load_from_memory(img_data)?)
-}
-
 /// Loads an image from a file and resize it to 224x224.
 /// This applies the ImageNet normalization.
 pub fn load_image_and_resize224<T: AsRef<Path>>(path: T) -> Result<Tensor, TchError> {
     normalize(&super::image::load_and_resize(path, 224, 224)?)
 }
 
-/// Loads an image from memory and resize it to 224x224.
-/// This applies the ImageNet normalization.
-pub fn load_image_and_resize224_from_memory(img_data: &[u8]) -> Result<Tensor, TchError> {
-    normalize(&super::image::load_and_resize_from_memory(img_data, 224, 224)?)
-}
-
 /// Loads an image from a file and resize it to the specified width and height.
 /// This applies the ImageNet normalization.
 pub fn load_image_and_resize<T: AsRef<Path>>(path: T, w: i64, h: i64) -> Result<Tensor, TchError> {
     normalize(&super::image::load_and_resize(path, w, h)?)
-}
-
-/// Loads an image from memory and resize it to the specified width and height.
-/// This applies the ImageNet normalization.
-pub fn load_image_and_resize_from_memory(
-    img_data: &[u8],
-    w: i64,
-    h: i64,
-) -> Result<Tensor, TchError> {
-    normalize(&super::image::load_and_resize_from_memory(img_data, w, h)?)
 }
 
 fn has_image_suffix<T: AsRef<Path>>(path: T) -> bool {
@@ -101,7 +84,7 @@ fn load_images_from_dir(dir: std::path::PathBuf) -> Result<Tensor, TchError> {
     if images.is_empty() {
         return Err(TchError::Io(io::Error::new(
             io::ErrorKind::NotFound,
-            format!("no image found in {dir:?}"),
+            format!("no image found in {:?}", dir),
         )));
     }
     Tensor::f_stack(&images, 0)
@@ -121,7 +104,7 @@ pub fn load_from_dir<T: AsRef<Path>>(dir: T) -> Result<Dataset, TchError> {
         .filter(|d| d.is_dir())
         .filter_map(|d| d.file_name().map(|d| d.to_os_string()))
         .collect::<Vec<_>>();
-    println!("classes: {classes:?}");
+    println!("classes: {:?}", classes);
     let mut train_images: Vec<Tensor> = vec![];
     let mut train_labels: Vec<Tensor> = vec![];
     let mut test_images: Vec<Tensor> = vec![];
@@ -131,11 +114,11 @@ pub fn load_from_dir<T: AsRef<Path>>(dir: T) -> Result<Dataset, TchError> {
         let images = load_images_from_dir(train_path.join(label_dir))?;
         let nimages = images.size()[0];
         train_images.push(images);
-        train_labels.push(Tensor::ones([nimages], kind::INT64_CPU) * label_index);
+        train_labels.push(Tensor::ones(&[nimages], kind::INT64_CPU) * label_index);
         let images = load_images_from_dir(valid_path.join(label_dir))?;
         let nimages = images.size()[0];
         test_images.push(images);
-        test_labels.push(Tensor::ones([nimages], kind::INT64_CPU) * label_index);
+        test_labels.push(Tensor::ones(&[nimages], kind::INT64_CPU) * label_index);
     }
     Ok(Dataset {
         train_images: Tensor::f_cat(&train_images, 0)?,
@@ -1157,11 +1140,11 @@ pub fn top(tensor: &Tensor, k: i64) -> Vec<(f64, String)> {
         [CLASS_COUNT] => tensor.shallow_clone(),
         [1, CLASS_COUNT] => tensor.view((CLASS_COUNT,)),
         [1, 1, CLASS_COUNT] => tensor.view((CLASS_COUNT,)),
-        _ => panic!("unexpected tensor shape {tensor:?}"),
+        _ => panic!("unexpected tensor shape {:?}", tensor),
     };
     let (values, indexes) = tensor.topk(k, 0, true, true);
-    let values = Vec::<f64>::try_from(values).unwrap();
-    let indexes = Vec::<i64>::try_from(indexes).unwrap();
+    let values = Vec::<f64>::from(values);
+    let indexes = Vec::<i64>::from(indexes);
     values
         .iter()
         .zip(indexes.iter())

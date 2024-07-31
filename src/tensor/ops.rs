@@ -12,7 +12,7 @@ fn neg(t: Tensor) -> Tensor {
 }
 
 fn inv(t: Tensor) -> Tensor {
-    t.pow_tensor_scalar(-1)
+    t.pow(-1)
 }
 
 macro_rules! impl_op {
@@ -293,14 +293,11 @@ impl PartialEq for Tensor {
         if self.size() != other.size() {
             return false;
         }
-        match self.f_eq_tensor(other) {
+        match self.f_eq_tensor(&other) {
             Err(_) => false,
             Ok(v) => match v.f_all() {
                 Err(_) => false,
-                Ok(v) => match i64::try_from(v) {
-                    Err(_) => false,
-                    Ok(v) => v > 0,
-                },
+                Ok(v) => i64::from(v) > 0,
             },
         }
     }

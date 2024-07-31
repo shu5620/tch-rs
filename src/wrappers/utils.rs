@@ -50,7 +50,7 @@ pub(super) fn path_to_cstring<T: AsRef<std::path::Path>>(
         Some(path) => Ok(std::ffi::CString::new(path)?),
         None => Err(TchError::Io(io::Error::new(
             io::ErrorKind::Other,
-            format!("path {path:?} cannot be converted to UTF-8"),
+            format!("path {:?} cannot be converted to UTF-8", path),
         ))),
     }
 }
@@ -78,60 +78,6 @@ pub fn set_num_interop_threads(n_threads: i32) {
 /// Set the number of threads used by torch in parallel regions.
 pub fn set_num_threads(n_threads: i32) {
     unsafe_torch!(torch_sys::at_set_num_threads(n_threads))
-}
-
-pub fn has_openmp() -> bool {
-    unsafe_torch!(torch_sys::at_context_has_openmp())
-}
-
-pub fn has_mkl() -> bool {
-    unsafe_torch!(torch_sys::at_context_has_mkl())
-}
-pub fn has_lapack() -> bool {
-    unsafe_torch!(torch_sys::at_context_has_lapack())
-}
-pub fn has_mkldnn() -> bool {
-    unsafe_torch!(torch_sys::at_context_has_mkldnn())
-}
-pub fn has_magma() -> bool {
-    unsafe_torch!(torch_sys::at_context_has_magma())
-}
-pub fn has_cuda() -> bool {
-    unsafe_torch!(torch_sys::at_context_has_cuda())
-}
-pub fn has_cudart() -> bool {
-    unsafe_torch!(torch_sys::at_context_has_cudart())
-}
-pub fn has_cusolver() -> bool {
-    unsafe_torch!(torch_sys::at_context_has_cusolver())
-}
-pub fn has_hip() -> bool {
-    unsafe_torch!(torch_sys::at_context_has_hip())
-}
-pub fn has_ipu() -> bool {
-    unsafe_torch!(torch_sys::at_context_has_ipu())
-}
-pub fn has_xla() -> bool {
-    unsafe_torch!(torch_sys::at_context_has_xla())
-}
-pub fn has_lazy() -> bool {
-    unsafe_torch!(torch_sys::at_context_has_lazy())
-}
-pub fn has_mps() -> bool {
-    unsafe_torch!(torch_sys::at_context_has_mps())
-}
-pub fn version_cudnn() -> i64 {
-    unsafe_torch!(torch_sys::at_context_version_cudnn())
-}
-pub fn version_cudart() -> i64 {
-    unsafe_torch!(torch_sys::at_context_version_cudart())
-}
-
-/// Check whether the vulkan backend is available. None that this
-/// backend is not included by default as of PyTorch 2.0.0.
-/// https://pytorch.org/tutorials/prototype/vulkan_workflow.html#building-pytorch-with-vulkan-backend
-pub fn has_vulkan() -> bool {
-    crate::Tensor::is_vulkan_available()
 }
 
 /// Quantization engines

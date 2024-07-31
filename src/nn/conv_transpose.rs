@@ -29,7 +29,7 @@ impl Default for ConvTransposeConfig {
             dilation: 1,
             groups: 1,
             bias: true,
-            ws_init: super::init::DEFAULT_KAIMING_UNIFORM,
+            ws_init: super::Init::KaimingUniform,
             bs_init: super::Init::Const(0.),
         }
     }
@@ -61,7 +61,11 @@ fn conv_transpose<'a, ND: std::convert::AsRef<[i64]>, T: Borrow<super::Path<'a>>
     config: ConvTransposeConfigND<ND>,
 ) -> ConvTransposeND<ND> {
     let vs = vs.borrow();
-    let bs = if config.bias { Some(vs.var("bias", &[out_dim], config.bs_init)) } else { None };
+    let bs = if config.bias {
+        Some(vs.var("bias", &[out_dim], config.bs_init))
+    } else {
+        None
+    };
     let mut weight_size = vec![in_dim, out_dim / config.groups];
     weight_size.extend(ksizes.as_ref().iter());
     let ws = vs.var("weight", weight_size.as_slice(), config.ws_init);
@@ -146,14 +150,14 @@ pub fn conv_transpose3d<'a, T: Borrow<Path<'a>>>(
 impl super::module::Module for ConvTranspose1D {
     fn forward(&self, xs: &Tensor) -> Tensor {
         Tensor::conv_transpose1d(
-            xs,
+            &xs,
             &self.ws,
             self.bs.as_ref(),
-            self.config.stride,
-            self.config.padding,
-            self.config.output_padding,
+            &self.config.stride,
+            &self.config.padding,
+            &self.config.output_padding,
             self.config.groups,
-            self.config.dilation,
+            &self.config.dilation,
         )
     }
 }
@@ -161,14 +165,14 @@ impl super::module::Module for ConvTranspose1D {
 impl super::module::Module for ConvTranspose2D {
     fn forward(&self, xs: &Tensor) -> Tensor {
         Tensor::conv_transpose2d(
-            xs,
+            &xs,
             &self.ws,
             self.bs.as_ref(),
-            self.config.stride,
-            self.config.padding,
-            self.config.output_padding,
+            &self.config.stride,
+            &self.config.padding,
+            &self.config.output_padding,
             self.config.groups,
-            self.config.dilation,
+            &self.config.dilation,
         )
     }
 }
@@ -176,14 +180,14 @@ impl super::module::Module for ConvTranspose2D {
 impl super::module::Module for ConvTranspose3D {
     fn forward(&self, xs: &Tensor) -> Tensor {
         Tensor::conv_transpose3d(
-            xs,
+            &xs,
             &self.ws,
             self.bs.as_ref(),
-            self.config.stride,
-            self.config.padding,
-            self.config.output_padding,
+            &self.config.stride,
+            &self.config.padding,
+            &self.config.output_padding,
             self.config.groups,
-            self.config.dilation,
+            &self.config.dilation,
         )
     }
 }

@@ -48,13 +48,18 @@ struct OuNoise {
 
 impl OuNoise {
     fn new(mu: f64, theta: f64, sigma: f64, num_actions: usize) -> Self {
-        let state = Tensor::ones([num_actions as _], FLOAT_CPU);
-        Self { mu, theta, sigma, state }
+        let state = Tensor::ones(&[num_actions as _], FLOAT_CPU);
+        Self {
+            mu,
+            theta,
+            sigma,
+            state,
+        }
     }
 
     fn sample(&mut self) -> &Tensor {
         let dx = self.theta * (self.mu - &self.state)
-            + self.sigma * Tensor::randn(self.state.size(), FLOAT_CPU);
+            + self.sigma * Tensor::randn(&self.state.size(), FLOAT_CPU);
         self.state += dx;
         &self.state
     }
@@ -73,10 +78,10 @@ struct ReplayBuffer {
 impl ReplayBuffer {
     fn new(capacity: usize, num_obs: usize, num_actions: usize) -> Self {
         Self {
-            obs: Tensor::zeros([capacity as _, num_obs as _], FLOAT_CPU),
-            next_obs: Tensor::zeros([capacity as _, num_obs as _], FLOAT_CPU),
-            rewards: Tensor::zeros([capacity as _, 1], FLOAT_CPU),
-            actions: Tensor::zeros([capacity as _, num_actions as _], FLOAT_CPU),
+            obs: Tensor::zeros(&[capacity as _, num_obs as _], FLOAT_CPU),
+            next_obs: Tensor::zeros(&[capacity as _, num_obs as _], FLOAT_CPU),
+            rewards: Tensor::zeros(&[capacity as _, 1], FLOAT_CPU),
+            actions: Tensor::zeros(&[capacity as _, num_actions as _], FLOAT_CPU),
             capacity,
             len: 0,
             i: 0,
@@ -101,7 +106,7 @@ impl ReplayBuffer {
         }
 
         let batch_size = batch_size.min(self.len - 1);
-        let batch_indexes = Tensor::randint((self.len - 2) as _, [batch_size as _], INT64_CPU);
+        let batch_indexes = Tensor::randint((self.len - 2) as _, &[batch_size as _], INT64_CPU);
 
         let states = self.obs.index_select(0, &batch_indexes);
         let next_states = self.next_obs.index_select(0, &batch_indexes);
@@ -118,7 +123,7 @@ struct Actor {
     device: Device,
     num_obs: usize,
     num_actions: usize,
-    opt: nn::Optimizer,
+    opt: nn::Optimizer<nn::Adam>,
     learning_rate: f64,
 }
 
@@ -133,7 +138,9 @@ impl Clone for Actor {
 impl Actor {
     fn new(num_obs: usize, num_actions: usize, learning_rate: f64) -> Self {
         let var_store = nn::VarStore::new(tch::Device::Cpu);
-        let opt = nn::Adam::default().build(&var_store, learning_rate).unwrap();
+        let opt = nn::Adam::default()
+            .build(&var_store, learning_rate)
+            .unwrap();
         let p = &var_store.root();
         Self {
             network: nn::seq()
@@ -141,7 +148,12 @@ impl Actor {
                 .add_fn(|xs| xs.relu())
                 .add(nn::linear(p / "al2", 400, 300, Default::default()))
                 .add_fn(|xs| xs.relu())
-                .add(nn::linear(p / "al3", 300, num_actions as _, Default::default()))
+                .add(nn::linear(
+                    p / "al3",
+                    300,
+                    num_actions as _,
+                    Default::default(),
+                ))
                 .add_fn(|xs| xs.tanh()),
             device: p.device(),
             num_obs,
@@ -163,7 +175,7 @@ struct Critic {
     device: Device,
     num_obs: usize,
     num_actions: usize,
-    opt: nn::Optimizer,
+    opt: nn::Optimizer<nn::Adam>,
     learning_rate: f64,
 }
 
@@ -182,7 +194,12 @@ impl Critic {
         let p = &var_store.root();
         Self {
             network: nn::seq()
-                .add(nn::linear(p / "cl1", (num_obs + num_actions) as _, 400, Default::default()))
+                .add(nn::linear(
+                    p / "cl1",
+                    (num_obs + num_actions) as _,
+                    400,
+                    Default::default(),
+                ))
                 .add_fn(|xs| xs.relu())
                 .add(nn::linear(p / "cl2", 400, 300, Default::default()))
                 .add_fn(|xs| xs.relu())
@@ -204,8 +221,10 @@ impl Critic {
 
 fn track(dest: &mut nn::VarStore, src: &nn::VarStore, tau: f64) {
     tch::no_grad(|| {
-        for (dest, src) in
-            dest.trainable_variables().iter_mut().zip(src.trainable_variables().iter())
+        for (dest, src) in dest
+            .trainable_variables()
+            .iter_mut()
+            .zip(src.trainable_variables().iter())
         {
             dest.copy_(&(tau * src + (1.0 - tau) * &*dest));
         }
@@ -275,8 +294,9 @@ impl Agent {
                 _ => return, // We don't have enough samples for training yet.
             };
 
-        let mut q_target =
-            self.critic_target.forward(&next_states, &self.actor_target.forward(&next_states));
+        let mut q_target = self
+            .critic_target
+            .forward(&next_states, &self.actor_target.forward(&next_states));
         q_target = rewards + (self.gamma * q_target).detach();
 
         let q = self.critic.forward(&states, &actions);
@@ -288,37 +308,56 @@ impl Agent {
         critic_loss.backward();
         self.critic.opt.step();
 
-        let actor_loss = -self.critic.forward(&states, &self.actor.forward(&states)).mean(Float);
+        let actor_loss = -self
+            .critic
+            .forward(&states, &self.actor.forward(&states))
+            .mean(Float);
 
         self.actor.opt.zero_grad();
         actor_loss.backward();
         self.actor.opt.step();
 
-        track(&mut self.critic_target.var_store, &self.critic.var_store, self.tau);
-        track(&mut self.actor_target.var_store, &self.actor.var_store, self.tau);
+        track(
+            &mut self.critic_target.var_store,
+            &self.critic.var_store,
+            self.tau,
+        );
+        track(
+            &mut self.actor_target.var_store,
+            &self.actor.var_store,
+            self.tau,
+        );
     }
 }
 
 pub fn run() -> cpython::PyResult<()> {
-    let env = GymEnv::new("Pendulum-v1")?;
+    let env = GymEnv::new("Pendulum-v0")?;
     println!("action space: {}", env.action_space());
     println!("observation space: {:?}", env.observation_space());
 
-    let num_obs = env.observation_space().iter().product::<i64>() as usize;
+    let num_obs = env.observation_space().iter().fold(1, |acc, x| acc * x) as usize;
     let num_actions = env.action_space() as usize;
 
     let actor = Actor::new(num_obs, num_actions, ACTOR_LEARNING_RATE);
     let critic = Critic::new(num_obs, num_actions, CRITIC_LEARNING_RATE);
     let ou_noise = OuNoise::new(MU, THETA, SIGMA, num_actions);
-    let mut agent = Agent::new(actor, critic, ou_noise, REPLAY_BUFFER_CAPACITY, true, GAMMA, TAU);
+    let mut agent = Agent::new(
+        actor,
+        critic,
+        ou_noise,
+        REPLAY_BUFFER_CAPACITY,
+        true,
+        GAMMA,
+        TAU,
+    );
 
     for episode in 0..MAX_EPISODES {
         let mut obs = env.reset()?;
 
         let mut total_reward = 0.0;
         for _ in 0..EPISODE_LENGTH {
-            let mut actions = 2.0 * f64::try_from(agent.actions(&obs)).unwrap();
-            actions = actions.clamp(-2.0, 2.0);
+            let mut actions = 2.0 * f64::from(agent.actions(&obs));
+            actions = actions.max(-2.0).min(2.0);
 
             let action_vec = vec![actions];
             let step = env.step(&action_vec)?;
@@ -332,7 +371,7 @@ pub fn run() -> cpython::PyResult<()> {
             obs = step.obs;
         }
 
-        println!("episode {episode} with total reward of {total_reward}");
+        println!("episode {} with total reward of {}", episode, total_reward);
 
         for _ in 0..TRAINING_ITERATIONS {
             agent.train(TRAINING_BATCH_SIZE);

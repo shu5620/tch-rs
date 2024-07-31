@@ -1,21 +1,24 @@
 //! ResNet implementation.
 //!
 //! See "Deep Residual Learning for Image Recognition" He et al. 2015
-//! <https://arxiv.org/abs/1512.03385>
+//! https://arxiv.org/abs/1512.03385
 use crate::{nn, nn::Conv2D, nn::FuncT, nn::ModuleT};
 
 fn conv2d(p: nn::Path, c_in: i64, c_out: i64, ksize: i64, padding: i64, stride: i64) -> Conv2D {
-    let conv2d_cfg = nn::ConvConfig { stride, padding, bias: false, ..Default::default() };
-    nn::conv2d(p, c_in, c_out, ksize, conv2d_cfg)
+    let conv2d_cfg = nn::ConvConfig {
+        stride,
+        padding,
+        bias: false,
+        ..Default::default()
+    };
+    nn::conv2d(&p, c_in, c_out, ksize, conv2d_cfg)
 }
 
 fn downsample(p: nn::Path, c_in: i64, c_out: i64, stride: i64) -> impl ModuleT {
     if stride != 1 || c_in != c_out {
-        nn::seq_t().add(conv2d(&p / "0", c_in, c_out, 1, 0, stride)).add(nn::batch_norm2d(
-            &p / "1",
-            c_out,
-            Default::default(),
-        ))
+        nn::seq_t()
+            .add(conv2d(&p / "0", c_in, c_out, 1, 0, stride))
+            .add(nn::batch_norm2d(&p / "1", c_out, Default::default()))
     } else {
         nn::seq_t()
     }
@@ -28,7 +31,12 @@ fn basic_block(p: nn::Path, c_in: i64, c_out: i64, stride: i64) -> impl ModuleT 
     let bn2 = nn::batch_norm2d(&p / "bn2", c_out, Default::default());
     let downsample = downsample(&p / "downsample", c_in, c_out, stride);
     nn::func_t(move |xs, train| {
-        let ys = xs.apply(&conv1).apply_t(&bn1, train).relu().apply(&conv2).apply_t(&bn2, train);
+        let ys = xs
+            .apply(&conv1)
+            .apply_t(&bn1, train)
+            .relu()
+            .apply(&conv2)
+            .apply_t(&bn2, train);
         (xs.apply_t(&downsample, train) + ys).relu()
     })
 }
@@ -60,12 +68,12 @@ fn resnet(
         xs.apply(&conv1)
             .apply_t(&bn1, train)
             .relu()
-            .max_pool2d([3, 3], [2, 2], [1, 1], [1, 1], false)
+            .max_pool2d(&[3, 3], &[2, 2], &[1, 1], &[1, 1], false)
             .apply_t(&layer1, train)
             .apply_t(&layer2, train)
             .apply_t(&layer3, train)
             .apply_t(&layer4, train)
-            .adaptive_avg_pool2d([1, 1])
+            .adaptive_avg_pool2d(&[1, 1])
             .flat_view()
             .apply_opt(&fc)
     })
@@ -74,7 +82,7 @@ fn resnet(
 /// Creates a ResNet-18 model.
 ///
 /// Pre-trained weights can be downloaded at the following link:
-/// <https://github.com/LaurentMazare/tch-rs/releases/download/untagged-eb220e5c19f9bb250bd1/resnet18.ot>
+/// https://github.com/LaurentMazare/ocaml-torch/releases/download/v0.1-unstable/resnet18.ot
 pub fn resnet18(p: &nn::Path, num_classes: i64) -> FuncT<'static> {
     resnet(p, Some(num_classes), 2, 2, 2, 2)
 }
@@ -86,7 +94,7 @@ pub fn resnet18_no_final_layer(p: &nn::Path) -> FuncT<'static> {
 /// Creates a ResNet-34 model.
 ///
 /// Pre-trained weights can be downloaded at the following link:
-/// <https://github.com/LaurentMazare/tch-rs/releases/download/untagged-eb220e5c19f9bb250bd1/resnet34.ot>
+/// https://github.com/LaurentMazare/ocaml-torch/releases/download/v0.1-unstable/resnet34.ot
 pub fn resnet34(p: &nn::Path, num_classes: i64) -> FuncT<'static> {
     resnet(p, Some(num_classes), 3, 4, 6, 3)
 }
@@ -123,7 +131,13 @@ fn bottleneck_block(p: nn::Path, c_in: i64, c_out: i64, stride: i64, e: i64) -> 
 fn bottleneck_layer(p: nn::Path, c_in: i64, c_out: i64, stride: i64, cnt: i64) -> impl ModuleT {
     let mut layer = nn::seq_t().add(bottleneck_block(&p / "0", c_in, c_out, stride, 4));
     for block_index in 1..cnt {
-        layer = layer.add(bottleneck_block(&p / &block_index.to_string(), 4 * c_out, c_out, 1, 4))
+        layer = layer.add(bottleneck_block(
+            &p / &block_index.to_string(),
+            4 * c_out,
+            c_out,
+            1,
+            4,
+        ))
     }
     layer
 }
@@ -147,12 +161,12 @@ fn bottleneck_resnet(
         xs.apply(&conv1)
             .apply_t(&bn1, train)
             .relu()
-            .max_pool2d([3, 3], [2, 2], [1, 1], [1, 1], false)
+            .max_pool2d(&[3, 3], &[2, 2], &[1, 1], &[1, 1], false)
             .apply_t(&layer1, train)
             .apply_t(&layer2, train)
             .apply_t(&layer3, train)
             .apply_t(&layer4, train)
-            .adaptive_avg_pool2d([1, 1])
+            .adaptive_avg_pool2d(&[1, 1])
             .flat_view()
             .apply_opt(&fc)
     })
